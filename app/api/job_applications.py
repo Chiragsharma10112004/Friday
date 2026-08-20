@@ -33,6 +33,6 @@ def analyze_and_save_job_endpoint(
     db: Session = Depends(get_db),
 ):
     return analyze_and_save_job(
-        db,
         request,
+        db
     )

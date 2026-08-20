@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.memory.database import SessionLocal
 
 from app.schemas.jobs import (
     JobAnalysisRequest,
@@ -14,14 +17,33 @@ router = APIRouter(
 )
 
 
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+
+    finally:
+        db.close()
+
+
 @router.post(
     "/analyze",
     response_model=JobAnalysisResponse
 )
-def analyze_job_endpoint(request: JobAnalysisRequest):
+def analyze_job_endpoint(
+    request: JobAnalysisRequest,
+    db: Session = Depends(get_db)
+):
     try:
-        result = analyze_job(request.job_description)
-        return JobAnalysisResponse(**result)
+        result = analyze_job(
+            request.job_description,
+            db
+        )
+
+        return JobAnalysisResponse(
+            **result
+        )
 
     except Exception as error:
         raise HTTPException(

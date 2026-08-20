@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from app.profile.api import router as profile_router
+from app.profile.models import UserProfile
 from app.api.job_applications import router as job_applications_router
 from app.api.jobs import router as jobs_router
 from app.api.system import router as system_router
@@ -29,6 +31,7 @@ app.include_router(chat_router)
 app.include_router(jobs_router)
 app.include_router(applications_router)
 app.include_router(job_applications_router)
+app.include_router(profile_router)
 
 @app.get("/")
 def root():
