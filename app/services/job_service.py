@@ -561,7 +561,8 @@ RULES:
     ]
 
     response = process_message(
-        messages
+        messages,
+        task="job_analysis"
     )
 
     return extract_json(

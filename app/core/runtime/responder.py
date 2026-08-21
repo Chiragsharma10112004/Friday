@@ -1,4 +1,4 @@
-from app.core.providers.ollama import generate
+from app.core.brain.manager import process_message
 from app.core.runtime.formatter import format_tool_response
 
 
@@ -19,4 +19,4 @@ def generate_chat_response(messages):
     Generate a normal conversational response.
     """
 
-    return generate(messages)
+    return process_message(messages, task="chat_response")

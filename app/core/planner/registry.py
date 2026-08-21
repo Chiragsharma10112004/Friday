@@ -14,8 +14,8 @@ from app.core.execution.python_runner import run_python
 from app.core.execution.terminal import run_command
 from app.core.execution.git import run_git
 
-from app.core.tools.project_search import find_text
-from app.core.tools.code_intelligence import find_symbol
+from app.core.intelligence.search import find_text
+from app.core.intelligence.symbols import find_symbol
 
 
 TOOLS = {

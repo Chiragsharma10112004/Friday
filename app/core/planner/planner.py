@@ -1,4 +1,4 @@
-from app.core.providers.ollama import generate
+from app.core.brain.manager import process_message
 from app.core.planner.parser import parse_tool_response
 
 
@@ -253,7 +253,7 @@ Return ONLY valid JSON.
         }
     ]
 
-    result = generate(messages)
+    result = process_message(messages, task="planning")
 
     print("\n========== RAW PLANNER OUTPUT ==========")
     print(result)

@@ -1,4 +1,4 @@
-from app.core.providers.ollama import generate
+from app.core.brain.manager import process_message
 from app.core.editor.validator import validate_ast
 
 MAX_RETRIES = 3
@@ -69,13 +69,14 @@ Invalid Function:
 {current}
 """
 
-        response = generate(
+        response = process_message(
             [
                 {
                     "role": "user",
                     "content": retry_prompt,
                 }
-            ]
+            ],
+            task="code_repair"
         )
 
         current = clean_code(response)

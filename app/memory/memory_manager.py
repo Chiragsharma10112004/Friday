@@ -1,6 +1,6 @@
 import json
 
-from app.core.providers.ollama import generate
+from app.core.brain.manager import process_message
 from app.memory.repository import save_memory
 from app.memory.repository import get_all_memory
 
@@ -52,7 +52,7 @@ def process_memory(db, message: str):
         }
     ]
 
-    result = generate(messages)
+    result = process_message(messages, task="memory_extraction")
 
     try:
 

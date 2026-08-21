@@ -1,7 +1,7 @@
 import ast
 from pathlib import Path
 from app.core.editor.diff import generate_diff
-from app.core.providers.ollama import generate
+from app.core.brain.manager import process_message
 
 IGNORE_DIRS = {
     ".git",
@@ -128,6 +128,8 @@ def replace_function(
         "preview": False,
         "file": str(path),
     }
+
+
 def edit_function(
     function_name: str,
     instruction: str,
@@ -172,7 +174,7 @@ Function:
         }
     ]
 
-    edited_function = generate(messages).strip()
+    edited_function = process_message(messages, task="code_editor").strip()
 
     return replace_function(
         function_name=function_name,
