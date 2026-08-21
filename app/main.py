@@ -7,6 +7,7 @@ from app.api.jobs import router as jobs_router
 from app.api.system import router as system_router
 from app.api.chat import router as chat_router
 from app.api.applications import router as applications_router
+from app.api.application_assets import router as application_assets_router
 
 from app.memory.database import Base, engine
 
@@ -32,6 +33,7 @@ app.include_router(jobs_router)
 app.include_router(applications_router)
 app.include_router(job_applications_router)
 app.include_router(profile_router)
+app.include_router(application_assets_router)
 
 @app.get("/")
 def root():
