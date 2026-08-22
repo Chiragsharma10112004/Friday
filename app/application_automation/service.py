@@ -27,10 +27,6 @@ class ApplicationAutomationService:
         request: InspectApplicationRequest,
         db: Session
     ) -> str:
-        """
-        Extract the target application URL from direct request, database record,
-        or normalized job posting.
-        """
         url = request.application_url
 
         if not url and request.application_id:
@@ -59,9 +55,6 @@ class ApplicationAutomationService:
         request: InspectApplicationRequest,
         db: Session
     ) -> InspectApplicationResponse:
-        """
-        Stage A: Inspect application page and produce human review preview.
-        """
         url = cls._resolve_application_url(request, db)
 
         profile = db.query(UserProfile).first()
@@ -77,13 +70,31 @@ class ApplicationAutomationService:
         )
 
     @classmethod
+    def refresh_inspection(
+        cls,
+        session_id: str,
+        db: Session
+    ) -> InspectApplicationResponse:
+        """
+        Re-inspect active session URL after manual authentication or account creation in browser.
+        """
+        session = default_browser_engine.session_manager.get_session(session_id)
+        profile = db.query(UserProfile).first()
+        if not profile:
+            raise AutomationException(
+                code=AutomationErrorCode.PROFILE_NOT_FOUND,
+                message="Master candidate profile not found."
+            )
+        return default_browser_engine.inspect_application_page(
+            url=session.url,
+            profile=profile
+        )
+
+    @classmethod
     def fill_form(
         cls,
         request: FillApprovedFieldsRequest
     ) -> FillApprovedFieldsResponse:
-        """
-        Stage B: Fill approved fields in the active session.
-        """
         if not request.session_id:
             raise AutomationException(
                 code=AutomationErrorCode.SESSION_NOT_FOUND,
@@ -103,6 +114,4 @@ class ApplicationAutomationService:
         )
 
 
-# Singleton instance
 default_automation_service = ApplicationAutomationService()
-

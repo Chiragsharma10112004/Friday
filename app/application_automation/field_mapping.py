@@ -8,7 +8,6 @@ from app.application_automation.schemas import (
     QuestionType,
 )
 
-# Canonical field normalization signatures
 FIELD_PATTERNS: Dict[str, List[re.Pattern]] = {
     "first_name": [
         re.compile(r"\b(first[\s_-]?name|given[\s_-]?name|fname)\b", re.I),
@@ -72,8 +71,9 @@ FIELD_PATTERNS: Dict[str, List[re.Pattern]] = {
     ],
 }
 
-# Questions that MUST ALWAYS be treated as sensitive / MANUAL_REQUIRED
+# Sensitive / compliance / authentication questions
 SENSITIVE_PATTERNS: List[re.Pattern] = [
+    re.compile(r"\b(password|passcode|secret|credential|otp|one[\s_-]?time[\s_-]?password|pin|token)\b", re.I),
     re.compile(r"\b(gender|sex|sexual[\s_-]?orientation)\b", re.I),
     re.compile(r"\b(race|ethnicity|hispanic|latino|caucasian|african[\s_-]?american|asian)\b", re.I),
     re.compile(r"\b(disability|veteran|military[\s_-]?status|protected[\s_-]?veteran)\b", re.I),
@@ -91,15 +91,20 @@ class FieldMapper:
     """
 
     @staticmethod
-    def is_sensitive_question(text: str) -> bool:
+    def is_sensitive_question(text: str, control_type: QuestionType = QuestionType.TEXT) -> bool:
+        if control_type == QuestionType.PASSWORD:
+            return True
         return any(pattern.search(text) for pattern in SENSITIVE_PATTERNS)
 
     @classmethod
     def match_canonical_field(cls, label: str, html_name: str = "", control_type: QuestionType = QuestionType.TEXT) -> Optional[str]:
+        # Password is never mapped to profile
+        if control_type == QuestionType.PASSWORD:
+            return None
+
         combined_text = f"{label} {html_name}".strip()
 
-        # Check explicit input type matches
-        if control_type == QuestionType.EMAIL:
+        if control_type == QuestionType.EMAIL and not any(kw in combined_text.lower() for kw in ["referrer", "friend", "manager"]):
             return "email"
         if control_type == QuestionType.TEL:
             return "phone"
@@ -120,22 +125,20 @@ class FieldMapper:
         html_name: str = "",
         control_type: QuestionType = QuestionType.TEXT,
     ) -> Tuple[Optional[str], Optional[str], FieldConfidence, FieldStatus, bool, Optional[str]]:
-        """
-        Maps a form field against the user profile.
-        Returns:
-            (suggested_value, source, confidence, status, is_sensitive, validation_notice)
-        """
         combined_text = f"{label} {html_name}".strip()
 
-        # 1. Sensitive questions are ALWAYS MANUAL_REQUIRED
-        if cls.is_sensitive_question(combined_text):
+        # 1. Sensitive questions / Password / Auth fields are ALWAYS MANUAL_REQUIRED
+        if cls.is_sensitive_question(combined_text, control_type):
+            notice = "Authentication, demographic, compensation, or compliance questions require manual review."
+            if control_type == QuestionType.PASSWORD or "password" in combined_text.lower() or "otp" in combined_text.lower():
+                notice = "Password and verification credentials must be completed manually in your browser."
             return (
                 None,
                 None,
                 FieldConfidence.UNSUPPORTED,
                 FieldStatus.MANUAL_REQUIRED,
                 True,
-                "Demographic, compensation, and compliance questions require manual review."
+                notice
             )
 
         if not canonical_key:
@@ -148,7 +151,7 @@ class FieldMapper:
                 "Custom question not mapped to candidate profile."
             )
 
-        # 2. Map directly to UserProfile model attributes
+        # 2. Map directly to UserProfile attributes
         value = None
         source = None
         confidence = FieldConfidence.HIGH
@@ -231,7 +234,6 @@ class FieldMapper:
             status = FieldStatus.APPROVAL_REQUIRED
             notice = "Cover letter text can be attached from Phase 3 assets."
 
-        # If value is missing from profile
         if not value or not str(value).strip():
             return (
                 None,
@@ -243,4 +245,3 @@ class FieldMapper:
             )
 
         return (str(value), source, confidence, status, False, notice)
-

@@ -12,6 +12,9 @@ class ApplicationPlatformDetector:
     @classmethod
     def detect_from_url_and_dom(cls, url: str, html_content: str = "") -> FormPlatform:
         parsed = urllib.parse.urlparse(url)
+        path = parsed.path.lower()
+        netloc = parsed.netloc.lower()
+
         phase2_platform = Phase2Detector.detect(url, parsed)
 
         if phase2_platform == "greenhouse":
@@ -25,6 +28,15 @@ class ApplicationPlatformDetector:
         if phase2_platform == "indeed":
             return FormPlatform.INDEED
 
+        # Oracle CX / Taleo / Fusion checks
+        if (
+            "/sites/cx" in path
+            or "oraclecloud.com" in netloc
+            or "taleo.net" in netloc
+            or "oracle.com" in netloc
+        ):
+            return FormPlatform.ORACLE
+
         # If URL was generic, inspect DOM for embedded ATS elements
         if html_content:
             soup = BeautifulSoup(html_content, "html.parser")
@@ -34,6 +46,7 @@ class ApplicationPlatformDetector:
                 return FormPlatform.LEVER
             if soup.select_one("div[data-automation-id*='workday'], form[action*='myworkdayjobs.com']"):
                 return FormPlatform.WORKDAY
+            if soup.select_one("div[class*='oracle'], div[data-cx-page], div[id*='taleo']"):
+                return FormPlatform.ORACLE
 
         return FormPlatform.GENERIC
-

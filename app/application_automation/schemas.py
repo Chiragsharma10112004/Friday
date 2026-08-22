@@ -11,6 +11,7 @@ class FormPlatform(str, Enum):
     WORKDAY = "workday"
     LINKEDIN = "linkedin"
     INDEED = "indeed"
+    ORACLE = "oracle"
     GENERIC = "generic"
     UNSUPPORTED = "unsupported"
 
@@ -33,6 +34,7 @@ class QuestionType(str, Enum):
     TEXT = "text"
     EMAIL = "email"
     TEL = "tel"
+    PASSWORD = "password"
     TEXTAREA = "textarea"
     SELECT = "select"
     RADIO = "radio"
@@ -44,10 +46,28 @@ class QuestionType(str, Enum):
 
 class InspectionStatus(str, Enum):
     PREVIEW_READY = "PREVIEW_READY"
+    JOB_DETAILS_PAGE = "JOB_DETAILS_PAGE"
+    APPLICATION_FORM = "APPLICATION_FORM"
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"  # Compatibility alias
+    ACCOUNT_CREATION_REQUIRED = "ACCOUNT_CREATION_REQUIRED"
+    EMAIL_VERIFICATION_REQUIRED = "EMAIL_VERIFICATION_REQUIRED"
     CAPTCHA_DETECTED = "CAPTCHA_DETECTED"
-    AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
     ACCESS_RESTRICTED = "ACCESS_RESTRICTED"
+    FORM_NOT_READY = "FORM_NOT_READY"
+    UNSUPPORTED_PAGE = "UNSUPPORTED_PAGE"
     FAILED = "FAILED"
+
+
+class PageType(str, Enum):
+    JOB_DETAILS = "JOB_DETAILS"
+    APPLICATION_FORM = "APPLICATION_FORM"
+    ACCOUNT_CREATION = "ACCOUNT_CREATION"
+    LOGIN = "LOGIN"
+    EMAIL_VERIFICATION = "EMAIL_VERIFICATION"
+    CAPTCHA = "CAPTCHA"
+    ACCESS_RESTRICTED = "ACCESS_RESTRICTED"
+    UNKNOWN = "UNKNOWN"
 
 
 class FieldInspectionItem(BaseModel):
@@ -62,7 +82,7 @@ class FieldInspectionItem(BaseModel):
     status: FieldStatus = Field(default=FieldStatus.MANUAL_REQUIRED, description="Automation review category")
     requires_approval: bool = Field(default=True, description="True if human confirmation is required before filling")
     options: List[str] = Field(default_factory=list, description="Available choices for select/radio/checkbox controls")
-    is_sensitive: bool = Field(default=False, description="True for legal, demographic, or salary questions")
+    is_sensitive: bool = Field(default=False, description="True for legal, demographic, password, or salary questions")
     validation_notice: Optional[str] = Field(default=None, description="Advisory explanation or manual guidance")
 
 
@@ -77,6 +97,7 @@ class InspectApplicationResponse(BaseModel):
     session_id: str = Field(..., description="Inspection session token for Stage B filling")
     platform: FormPlatform = Field(default=FormPlatform.GENERIC)
     status: InspectionStatus = Field(default=InspectionStatus.PREVIEW_READY)
+    page_type: Optional[str] = Field(default=None, description="Semantic classification of the page")
     page_url: str
     page_title: Optional[str] = None
     fields: List[FieldInspectionItem] = Field(default_factory=list)
@@ -84,6 +105,9 @@ class InspectApplicationResponse(BaseModel):
     approval_required_count: int = 0
     manual_required_count: int = 0
     unsupported_count: int = 0
+    authentication_required: bool = False
+    account_creation_required: bool = False
+    captcha_detected: bool = False
     warnings: List[str] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
     submission_allowed: bool = Field(default=False, description="Hard safety invariant: always False")
@@ -115,4 +139,3 @@ class FillApprovedFieldsResponse(BaseModel):
     manual_submission_required: bool = Field(default=True, description="Human user must review and manually submit")
     warnings: List[str] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
-

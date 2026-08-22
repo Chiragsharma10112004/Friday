@@ -34,19 +34,13 @@ def inspect_application_endpoint(
     request: InspectApplicationRequest,
     db: Session = Depends(get_db)
 ):
-    """
-    Open target job application form, detect platform, parse visible controls,
-    map candidate profile facts, and return a preview with AUTO_FILL_READY,
-    APPROVAL_REQUIRED, and MANUAL_REQUIRED classifications.
-    Does NOT modify the form or submit the application.
-    """
     try:
         return default_automation_service.inspect_form(request, db)
     except AutomationException as e:
         status_code = status.HTTP_400_BAD_REQUEST
         if e.code == AutomationErrorCode.SESSION_NOT_FOUND or e.code == AutomationErrorCode.APPLICATION_NOT_FOUND:
             status_code = status.HTTP_404_NOT_FOUND
-        elif e.code == AutomationErrorCode.SESSION_EXPIRED or e.code == AutomationErrorCode.PAGE_STATE_CHANGED:
+        elif e.code == AutomationErrorCode.SESSION_EXPIRED or e.code == AutomationErrorCode.PAGE_STATE_CHANGED or e.code == AutomationErrorCode.STAGE_TRANSITION_INVALID:
             status_code = status.HTTP_409_CONFLICT
         elif e.code == AutomationErrorCode.SOURCE_ACCESS_RESTRICTED:
             status_code = status.HTTP_403_FORBIDDEN
@@ -72,6 +66,34 @@ def inspect_application_endpoint(
 
 
 @router.post(
+    "/inspect/{session_id}/refresh",
+    response_model=InspectApplicationResponse,
+    summary="Re-inspect application form after completing browser authentication"
+)
+def refresh_inspection_endpoint(
+    session_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        return default_automation_service.refresh_inspection(session_id, db)
+    except AutomationException as e:
+        status_code = status.HTTP_400_BAD_REQUEST
+        if e.code == AutomationErrorCode.SESSION_NOT_FOUND:
+            status_code = status.HTTP_404_NOT_FOUND
+        elif e.code == AutomationErrorCode.SESSION_EXPIRED:
+            status_code = status.HTTP_409_CONFLICT
+
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "code": e.code.value,
+                "message": e.message,
+                "platform": e.platform
+            }
+        )
+
+
+@router.post(
     "/fill",
     response_model=FillApprovedFieldsResponse,
     summary="Stage B: Fill approved fields in active form session"
@@ -79,18 +101,13 @@ def inspect_application_endpoint(
 def fill_application_endpoint(
     request: FillApprovedFieldsRequest
 ):
-    """
-    Fills ONLY the user-approved form fields in the active session.
-    Leaves the browser at the completed form for final human review.
-    Hard safety invariant: NEVER submits the application automatically.
-    """
     try:
         return default_automation_service.fill_form(request)
     except AutomationException as e:
         status_code = status.HTTP_400_BAD_REQUEST
         if e.code == AutomationErrorCode.SESSION_NOT_FOUND:
             status_code = status.HTTP_404_NOT_FOUND
-        elif e.code == AutomationErrorCode.SESSION_EXPIRED:
+        elif e.code == AutomationErrorCode.SESSION_EXPIRED or e.code == AutomationErrorCode.STAGE_TRANSITION_INVALID:
             status_code = status.HTTP_409_CONFLICT
         elif e.code == AutomationErrorCode.SUBMISSION_BLOCKED or e.code == AutomationErrorCode.UNSAFE_FIELD:
             status_code = status.HTTP_403_FORBIDDEN
@@ -111,4 +128,3 @@ def fill_application_endpoint(
                 "message": f"Field filling failed: {str(e)}"
             }
         )
-

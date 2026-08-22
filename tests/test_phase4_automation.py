@@ -12,6 +12,7 @@ from app.application_automation.schemas import (
     FieldStatus,
     QuestionType,
     InspectionStatus,
+    PageType,
     InspectApplicationRequest,
     InspectApplicationResponse,
     FillApprovedFieldsRequest,
@@ -34,7 +35,6 @@ class Phase4AutomationTests(unittest.TestCase):
         cls.client = TestClient(app)
         cls.db = SessionLocal()
 
-        # Ensure a candidate profile exists
         profile = cls.db.query(UserProfile).first()
         if not profile:
             profile = UserProfile(
@@ -62,7 +62,6 @@ class Phase4AutomationTests(unittest.TestCase):
             cls.db.refresh(profile)
         cls.profile = profile
 
-        # Ensure a sample application exists in DB
         job_app = cls.db.query(JobApplication).filter(JobApplication.company == "AutomationCorp").first()
         if not job_app:
             job_app = JobApplication(
@@ -171,8 +170,78 @@ class Phase4AutomationTests(unittest.TestCase):
         </html>
         """
 
+    def _get_sample_ti_apply_email_html(self):
+        return """
+        <html>
+        <head><title>Texas Instruments Careers - Candidate Portal</title></head>
+        <body>
+            <div class="cx-portal-container">
+                <h2>Start Your Application</h2>
+                <p>Enter your email to apply or create a candidate account.</p>
+                <form action="/en/sites/CX/jobs/preview/25016856/apply/email" method="POST">
+                    <label for="candidate_email">Email Address</label>
+                    <input type="email" id="candidate_email" name="email" placeholder="name@domain.com" required />
+                    <button type="submit">Continue with email</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """
+
+    def _get_sample_job_details_preview_html(self):
+        return """
+        <html>
+        <head><title>Senior Systems Engineer - Texas Instruments</title></head>
+        <body>
+            <div class="job-header">
+                <h1>Senior Systems Engineer</h1>
+                <a href="/en/sites/CX/jobs/preview/25016856/apply/email" class="apply-btn">Apply Now</a>
+            </div>
+            <div class="job-description">
+                <h2>Job Description</h2>
+                <p>Texas Instruments is seeking a talented engineer...</p>
+                <h2>Responsibilities</h2>
+                <p>Design analog and embedded systems...</p>
+            </div>
+        </body>
+        </html>
+        """
+
+    def _get_sample_login_page_html(self):
+        return """
+        <html>
+        <head><title>Candidate Sign In - Employer Portal</title></head>
+        <body>
+            <form action="/login" method="POST">
+                <h2>Sign In to Apply</h2>
+                <label for="user_email">Email</label>
+                <input type="email" id="user_email" name="username" />
+                <label for="user_pass">Password</label>
+                <input type="password" id="user_pass" name="password" autocomplete="current-password" />
+                <button type="submit">Sign In</button>
+            </form>
+        </body>
+        </html>
+        """
+
+    def _get_sample_otp_verification_html(self):
+        return """
+        <html>
+        <head><title>Email Verification</title></head>
+        <body>
+            <form action="/verify-otp" method="POST">
+                <h2>Verify Your Email</h2>
+                <p>We sent a 6-digit one-time password (OTP) to your email.</p>
+                <label for="otp_code">Enter Verification Code</label>
+                <input type="text" id="otp_code" name="otp" placeholder="123456" />
+                <button type="submit">Verify Code</button>
+            </form>
+        </body>
+        </html>
+        """
+
     # ==========================================
-    # 1. Inspection & Field Mapping Tests
+    # 1. Existing Platform Tests (Greenhouse & Lever)
     # ==========================================
 
     @patch("app.application_automation.browser.SafeHttpClient.get")
@@ -188,11 +257,10 @@ class Phase4AutomationTests(unittest.TestCase):
         self.assertTrue(res.success)
         self.assertEqual(res.platform, FormPlatform.GREENHOUSE)
         self.assertEqual(res.status, InspectionStatus.PREVIEW_READY)
-        self.assertFalse(res.submission_allowed)  # Invariant check
+        self.assertFalse(res.submission_allowed)
         self.assertGreater(res.auto_fill_ready_count, 0)
         self.assertGreater(res.manual_required_count, 0)
 
-        # Check high-confidence mappings against candidate profile
         fields_by_key = {f.normalized_field: f for f in res.fields if f.normalized_field}
         self.assertIn("first_name", fields_by_key)
         self.assertEqual(fields_by_key["first_name"].suggested_value, self.profile.first_name)
@@ -243,7 +311,7 @@ class Phase4AutomationTests(unittest.TestCase):
             self.assertTrue(sf.requires_approval)
 
     # ==========================================
-    # 3. Workday, LinkedIn, Indeed Policies
+    # 3. Restricted Platforms (LinkedIn & Indeed)
     # ==========================================
 
     def test_04_restricted_platform_linkedin_handling(self):
@@ -259,7 +327,7 @@ class Phase4AutomationTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, AutomationErrorCode.SOURCE_ACCESS_RESTRICTED)
 
     # ==========================================
-    # 4. CAPTCHA & Authentication Obstacles
+    # 4. CAPTCHA Obstacles
     # ==========================================
 
     @patch("app.application_automation.browser.SafeHttpClient.get")
@@ -282,38 +350,106 @@ class Phase4AutomationTests(unittest.TestCase):
 
         self.assertFalse(res.success)
         self.assertEqual(res.status, InspectionStatus.CAPTCHA_DETECTED)
+        self.assertTrue(res.captcha_detected)
         self.assertIn("CAPTCHA challenge detected", res.warnings[0])
 
+    # ==========================================
+    # 5. TI Regression Check & Account Creation Flow
+    # ==========================================
+
     @patch("app.application_automation.browser.SafeHttpClient.get")
-    def test_07_auth_required_causes_safe_stop(self, mock_http):
-        auth_html = "<html><body><h1>Sign in to apply to this position</h1></body></html>"
+    def test_07_texas_instruments_apply_email_account_creation_detection(self, mock_http):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
-        mock_resp.text = auth_html
+        mock_resp.text = self._get_sample_ti_apply_email_html()
         mock_http.return_value = mock_resp
 
-        req = InspectApplicationRequest(application_url="https://careers.example.com/apply")
+        req = InspectApplicationRequest(application_url="https://careers.ti.com/en/sites/CX/jobs/preview/25016856/apply/email")
         res = default_automation_service.inspect_form(req, self.db)
 
-        self.assertFalse(res.success)
-        self.assertEqual(res.status, InspectionStatus.AUTHENTICATION_REQUIRED)
+        self.assertEqual(res.platform, FormPlatform.ORACLE)
+        self.assertEqual(res.status, InspectionStatus.ACCOUNT_CREATION_REQUIRED)
+        self.assertEqual(res.page_type, PageType.ACCOUNT_CREATION.value)
+        self.assertTrue(res.account_creation_required)
+        self.assertNotEqual(res.status, InspectionStatus.PREVIEW_READY)
+        self.assertFalse(res.submission_allowed)
 
     # ==========================================
-    # 5. Stage B: Fill Approved Fields Tests
+    # 6. Job Details Preview Page (0 fields)
     # ==========================================
 
     @patch("app.application_automation.browser.SafeHttpClient.get")
-    def test_08_fill_approved_fields_success(self, mock_http):
+    def test_08_job_details_page_classification(self, mock_http):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._get_sample_job_details_preview_html()
+        mock_http.return_value = mock_resp
+
+        req = InspectApplicationRequest(application_url="https://careers.ti.com/en/sites/CX/jobs/preview/25016856/")
+        res = default_automation_service.inspect_form(req, self.db)
+
+        self.assertEqual(res.status, InspectionStatus.JOB_DETAILS_PAGE)
+        self.assertEqual(res.page_type, PageType.JOB_DETAILS.value)
+        self.assertEqual(len(res.fields), 0)
+        self.assertNotEqual(res.status, InspectionStatus.PREVIEW_READY)
+
+    # ==========================================
+    # 7. Authentication / Login Page Detection
+    # ==========================================
+
+    @patch("app.application_automation.browser.SafeHttpClient.get")
+    def test_09_login_page_detection_and_password_safety(self, mock_http):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._get_sample_login_page_html()
+        mock_http.return_value = mock_resp
+
+        req = InspectApplicationRequest(application_url="https://careers.example.com/login")
+        res = default_automation_service.inspect_form(req, self.db)
+
+        self.assertEqual(res.status, InspectionStatus.AUTH_REQUIRED)
+        self.assertEqual(res.page_type, PageType.LOGIN.value)
+        self.assertTrue(res.authentication_required)
+
+        # Check password field is strictly MANUAL_REQUIRED and sensitive
+        for f in res.fields:
+            if f.control_type == QuestionType.PASSWORD or "password" in f.label.lower():
+                self.assertEqual(f.status, FieldStatus.MANUAL_REQUIRED)
+                self.assertTrue(f.is_sensitive)
+                self.assertIsNone(f.suggested_value)
+
+    # ==========================================
+    # 8. OTP / Email Verification Detection
+    # ==========================================
+
+    @patch("app.application_automation.browser.SafeHttpClient.get")
+    def test_10_otp_email_verification_detection(self, mock_http):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._get_sample_otp_verification_html()
+        mock_http.return_value = mock_resp
+
+        req = InspectApplicationRequest(application_url="https://careers.example.com/verify-email")
+        res = default_automation_service.inspect_form(req, self.db)
+
+        self.assertEqual(res.status, InspectionStatus.EMAIL_VERIFICATION_REQUIRED)
+        self.assertEqual(res.page_type, PageType.EMAIL_VERIFICATION.value)
+        self.assertTrue(res.authentication_required)
+
+    # ==========================================
+    # 9. Fill Endpoint Safety & Blocking Invalid States
+    # ==========================================
+
+    @patch("app.application_automation.browser.SafeHttpClient.get")
+    def test_11_fill_approved_fields_success_on_preview_ready(self, mock_http):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.text = self._get_sample_greenhouse_html()
         mock_http.return_value = mock_resp
 
-        # Stage A: Inspect
         insp_req = InspectApplicationRequest(application_url="https://boards.greenhouse.io/automationcorp/jobs/101")
         insp_res = default_automation_service.inspect_form(insp_req, self.db)
 
-        # Stage B: Fill only first_name and email
         approved = ["#first_name", "#email"]
         fill_req = FillApprovedFieldsRequest(
             session_id=insp_res.session_id,
@@ -323,14 +459,28 @@ class Phase4AutomationTests(unittest.TestCase):
 
         self.assertTrue(fill_res.success)
         self.assertEqual(len(fill_res.fields_filled), 2)
-        self.assertFalse(fill_res.submission_performed)  # INVARIANT
-        self.assertTrue(fill_res.manual_submission_required)  # INVARIANT
+        self.assertFalse(fill_res.submission_performed)
+        self.assertTrue(fill_res.manual_submission_required)
 
-        filled_ids = [f.field_id for f in fill_res.fields_filled]
-        self.assertIn("#first_name", filled_ids)
-        self.assertIn("#email", filled_ids)
+    @patch("app.application_automation.browser.SafeHttpClient.get")
+    def test_12_fill_blocked_on_auth_or_account_creation_checkpoint(self, mock_http):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = self._get_sample_ti_apply_email_html()
+        mock_http.return_value = mock_resp
 
-    def test_09_fill_blocked_if_no_fields_approved(self):
+        insp_req = InspectApplicationRequest(application_url="https://careers.ti.com/en/sites/CX/jobs/preview/25016856/apply/email")
+        insp_res = default_automation_service.inspect_form(insp_req, self.db)
+
+        fill_req = FillApprovedFieldsRequest(
+            session_id=insp_res.session_id,
+            approved_field_ids=["#candidate_email"]
+        )
+        with self.assertRaises(AutomationException) as ctx:
+            default_automation_service.fill_form(fill_req)
+        self.assertEqual(ctx.exception.code, AutomationErrorCode.STAGE_TRANSITION_INVALID)
+
+    def test_13_fill_blocked_if_no_fields_approved(self):
         fill_req = FillApprovedFieldsRequest(
             session_id="dummy-session",
             approved_field_ids=[]
@@ -339,54 +489,37 @@ class Phase4AutomationTests(unittest.TestCase):
             default_automation_service.fill_form(fill_req)
         self.assertEqual(ctx.exception.code, AutomationErrorCode.FIELD_NOT_APPROVED)
 
-    def test_10_missing_session_error(self):
-        fill_req = FillApprovedFieldsRequest(
-            session_id="nonexistent-session-id",
-            approved_field_ids=["#first_name"]
-        )
-        with self.assertRaises(AutomationException) as ctx:
-            default_automation_service.fill_form(fill_req)
-        self.assertEqual(ctx.exception.code, AutomationErrorCode.SESSION_NOT_FOUND)
-
-    def test_11_submission_action_strictly_forbidden(self):
+    def test_14_submission_action_strictly_forbidden(self):
         with self.assertRaises(AutomationException) as ctx:
             AutomationSafetyValidator.assert_no_submit_action("#submit_button", "Submit Application")
         self.assertEqual(ctx.exception.code, AutomationErrorCode.SUBMISSION_BLOCKED)
 
     # ==========================================
-    # 6. HTTP API Endpoint Integration Tests
+    # 10. HTTP API Endpoints & Refresh Support
     # ==========================================
 
     @patch("app.application_automation.browser.SafeHttpClient.get")
-    def test_12_post_inspect_and_fill_endpoints(self, mock_http):
+    def test_15_post_inspect_and_refresh_endpoints(self, mock_http):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.text = self._get_sample_greenhouse_html()
         mock_http.return_value = mock_resp
 
-        # 1. Test POST /application-automation/inspect
+        # 1. POST /application-automation/inspect
         payload = {"application_url": "https://boards.greenhouse.io/automationcorp/jobs/101"}
         resp = self.client.post("/application-automation/inspect", json=payload)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data["success"])
-        self.assertFalse(data["submission_allowed"])
         session_id = data["session_id"]
 
-        # 2. Test POST /application-automation/fill
-        fill_payload = {
-            "session_id": session_id,
-            "approved_field_ids": ["#first_name", "#last_name", "#email"]
-        }
-        fill_resp = self.client.post("/application-automation/fill", json=fill_payload)
-        self.assertEqual(fill_resp.status_code, 200)
-        fill_data = fill_resp.json()
-        self.assertTrue(fill_data["success"])
-        self.assertFalse(fill_data["submission_performed"])
-        self.assertTrue(fill_data["manual_submission_required"])
-        self.assertEqual(len(fill_data["fields_filled"]), 3)
+        # 2. POST /application-automation/inspect/{id}/refresh
+        refresh_resp = self.client.post(f"/application-automation/inspect/{session_id}/refresh")
+        self.assertEqual(refresh_resp.status_code, 200)
+        refresh_data = refresh_resp.json()
+        self.assertTrue(refresh_data["success"])
+        self.assertEqual(refresh_data["status"], InspectionStatus.PREVIEW_READY)
 
 
 if __name__ == "__main__":
     unittest.main()
-

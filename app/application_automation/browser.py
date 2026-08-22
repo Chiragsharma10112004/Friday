@@ -3,12 +3,14 @@ import uuid
 import logging
 from typing import Dict, Optional, List, Tuple
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 
 from app.profile.models import UserProfile
 from app.ingestion.validators import SafeHttpClient, validate_url_syntax
 from app.application_automation.schemas import (
     FormPlatform,
     InspectionStatus,
+    PageType,
     FieldInspectionItem,
     FieldFillResult,
     InspectApplicationResponse,
@@ -41,6 +43,8 @@ class AutomationSession:
         url: str,
         platform: FormPlatform,
         fields: List[FieldInspectionItem],
+        status: InspectionStatus = InspectionStatus.PREVIEW_READY,
+        page_type: PageType = PageType.APPLICATION_FORM,
         html_content: str = "",
         page_title: str = "",
         ttl_minutes: int = SESSION_TTL_MINUTES
@@ -49,6 +53,8 @@ class AutomationSession:
         self.url = url
         self.platform = platform
         self.fields = fields
+        self.status = status
+        self.page_type = page_type
         self.html_content = html_content
         self.page_title = page_title
         self.created_at = datetime.utcnow()
@@ -71,6 +77,8 @@ class SessionManager:
         url: str,
         platform: FormPlatform,
         fields: List[FieldInspectionItem],
+        status: InspectionStatus = InspectionStatus.PREVIEW_READY,
+        page_type: PageType = PageType.APPLICATION_FORM,
         html_content: str = "",
         page_title: str = ""
     ) -> AutomationSession:
@@ -81,6 +89,8 @@ class SessionManager:
             url=url,
             platform=platform,
             fields=fields,
+            status=status,
+            page_type=page_type,
             html_content=html_content,
             page_title=page_title,
         )
@@ -122,6 +132,7 @@ class BrowserAutomationEngine:
             FormPlatform.GREENHOUSE: GreenhouseFormAdapter(),
             FormPlatform.LEVER: LeverFormAdapter(),
             FormPlatform.GENERIC: GenericFormAdapter(),
+            FormPlatform.ORACLE: GenericFormAdapter(),
         }
 
     def _select_adapter(self, platform: FormPlatform) -> BaseFormAdapter:
@@ -169,48 +180,197 @@ class BrowserAutomationEngine:
                 platform=platform.value
             )
 
-        # 3. Check for CAPTCHA
+        soup = BeautifulSoup(html_content, "html.parser")
+        page_title = soup.title.get_text(strip=True) if soup.title else "Job Application"
+        session_id = str(uuid.uuid4())
+
+        # 3. Check for CAPTCHA Challenge
         if BaseFormAdapter.detect_captcha(html_content):
-            session_id = str(uuid.uuid4())
+            session = self.session_manager.create_session(
+                url=url_str,
+                platform=platform,
+                fields=[],
+                status=InspectionStatus.CAPTCHA_DETECTED,
+                page_type=PageType.CAPTCHA,
+                html_content=html_content,
+                page_title=page_title
+            )
             return InspectApplicationResponse(
                 success=False,
-                session_id=session_id,
+                session_id=session.session_id,
                 platform=platform,
                 status=InspectionStatus.CAPTCHA_DETECTED,
+                page_type=PageType.CAPTCHA.value,
                 page_url=url_str,
+                page_title=page_title,
+                captcha_detected=True,
                 warnings=["CAPTCHA challenge detected on page. Automated inspection was halted for safety."],
                 errors=["A CAPTCHA challenge is active. Please complete it manually in your browser."],
                 submission_allowed=False
             )
 
-        # 4. Check for Authentication Required
-        if BaseFormAdapter.detect_authentication_required(html_content, status_code):
-            session_id = str(uuid.uuid4())
-            return InspectApplicationResponse(
-                success=False,
-                session_id=session_id,
+        # 4. Check for Email Verification / OTP flow
+        if BaseFormAdapter.detect_email_verification_required(html_content, url_str):
+            adapter = self._select_adapter(platform)
+            raw_fields = adapter.inspect_form(html_content, url_str)
+            session = self.session_manager.create_session(
+                url=url_str,
                 platform=platform,
-                status=InspectionStatus.AUTHENTICATION_REQUIRED,
+                fields=raw_fields,
+                status=InspectionStatus.EMAIL_VERIFICATION_REQUIRED,
+                page_type=PageType.EMAIL_VERIFICATION,
+                html_content=html_content,
+                page_title=page_title
+            )
+            return FormPreviewCompiler.compile_preview(
+                session_id=session.session_id,
+                platform=platform,
                 page_url=url_str,
-                warnings=["Authentication / Sign-in required to view application form."],
-                errors=["Please sign in to the employer portal manually before running form assistance."],
-                submission_allowed=False
+                raw_fields=raw_fields,
+                profile=profile,
+                page_title=page_title,
+                status=InspectionStatus.EMAIL_VERIFICATION_REQUIRED,
+                page_type=PageType.EMAIL_VERIFICATION,
+                authentication_required=True,
+                extra_warnings=["Email verification / One-Time Password (OTP) required. Please enter verification code manually in your browser."]
             )
 
-        # 5. Extract form fields using appropriate adapter
+        # 5. Check for Account Creation / Email Entry checkpoint (e.g. TI /apply/email)
+        if BaseFormAdapter.detect_account_creation_required(html_content, url_str):
+            adapter = self._select_adapter(platform)
+            raw_fields = adapter.inspect_form(html_content, url_str)
+            session = self.session_manager.create_session(
+                url=url_str,
+                platform=platform,
+                fields=raw_fields,
+                status=InspectionStatus.ACCOUNT_CREATION_REQUIRED,
+                page_type=PageType.ACCOUNT_CREATION,
+                html_content=html_content,
+                page_title=page_title
+            )
+            return FormPreviewCompiler.compile_preview(
+                session_id=session.session_id,
+                platform=platform,
+                page_url=url_str,
+                raw_fields=raw_fields,
+                profile=profile,
+                page_title=page_title,
+                status=InspectionStatus.ACCOUNT_CREATION_REQUIRED,
+                page_type=PageType.ACCOUNT_CREATION,
+                account_creation_required=True,
+                extra_warnings=["An application account or email entry step is required before the full application form can be accessed. Please complete this step manually."]
+            )
+
+        # 6. Check for Authentication / Login Required
+        if BaseFormAdapter.detect_authentication_required(html_content, status_code, url_str):
+            adapter = self._select_adapter(platform)
+            raw_fields = adapter.inspect_form(html_content, url_str)
+            session = self.session_manager.create_session(
+                url=url_str,
+                platform=platform,
+                fields=raw_fields,
+                status=InspectionStatus.AUTH_REQUIRED,
+                page_type=PageType.LOGIN,
+                html_content=html_content,
+                page_title=page_title
+            )
+            return FormPreviewCompiler.compile_preview(
+                session_id=session.session_id,
+                platform=platform,
+                page_url=url_str,
+                raw_fields=raw_fields,
+                profile=profile,
+                page_title=page_title,
+                status=InspectionStatus.AUTH_REQUIRED,
+                page_type=PageType.LOGIN,
+                authentication_required=True,
+                extra_warnings=["Authentication / Sign-in is required to access this application form. Please log in manually in your browser."]
+            )
+
+        # 7. Extract form fields using appropriate platform adapter
         adapter = self._select_adapter(platform)
         raw_fields = adapter.inspect_form(html_content, url_str)
 
-        # Extract page title
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(html_content, "html.parser")
-        page_title = soup.title.get_text(strip=True) if soup.title else "Job Application"
+        # 8. Classify Page when 0 fields are found
+        if len(raw_fields) == 0:
+            if BaseFormAdapter.detect_job_details_page(html_content, url_str):
+                session = self.session_manager.create_session(
+                    url=url_str,
+                    platform=platform,
+                    fields=[],
+                    status=InspectionStatus.JOB_DETAILS_PAGE,
+                    page_type=PageType.JOB_DETAILS,
+                    html_content=html_content,
+                    page_title=page_title
+                )
+                return InspectApplicationResponse(
+                    success=True,
+                    session_id=session.session_id,
+                    platform=platform,
+                    status=InspectionStatus.JOB_DETAILS_PAGE,
+                    page_type=PageType.JOB_DETAILS.value,
+                    page_url=url_str,
+                    page_title=page_title,
+                    fields=[],
+                    warnings=["Target page is a Job Details preview. Click 'Apply' to navigate to the application form."],
+                    submission_allowed=False
+                )
 
-        # 6. Create session & Compile Preview
+            # Check if dynamic shell without rendered fields
+            has_js_app_shell = bool(soup.select("#root, #app, [id*='app-root'], [class*='spinner'], [class*='loader']"))
+            if has_js_app_shell:
+                session = self.session_manager.create_session(
+                    url=url_str,
+                    platform=platform,
+                    fields=[],
+                    status=InspectionStatus.FORM_NOT_READY,
+                    page_type=PageType.UNKNOWN,
+                    html_content=html_content,
+                    page_title=page_title
+                )
+                return InspectApplicationResponse(
+                    success=False,
+                    session_id=session.session_id,
+                    platform=platform,
+                    status=InspectionStatus.FORM_NOT_READY,
+                    page_type=PageType.UNKNOWN.value,
+                    page_url=url_str,
+                    page_title=page_title,
+                    fields=[],
+                    warnings=["Application form fields did not render within the inspection timeout. The page may require a live browser session."],
+                    submission_allowed=False
+                )
+
+            # Fallback unsupported page
+            session = self.session_manager.create_session(
+                url=url_str,
+                platform=platform,
+                fields=[],
+                status=InspectionStatus.UNSUPPORTED_PAGE,
+                page_type=PageType.UNKNOWN,
+                html_content=html_content,
+                page_title=page_title
+            )
+            return InspectApplicationResponse(
+                success=False,
+                session_id=session.session_id,
+                platform=platform,
+                status=InspectionStatus.UNSUPPORTED_PAGE,
+                page_type=PageType.UNKNOWN.value,
+                page_url=url_str,
+                page_title=page_title,
+                fields=[],
+                warnings=["Could not detect any fillable application fields or standard form structures on this page."],
+                submission_allowed=False
+            )
+
+        # 9. Legitimate application form with >= 1 fields -> PREVIEW_READY
         session = self.session_manager.create_session(
             url=url_str,
             platform=platform,
             fields=raw_fields,
+            status=InspectionStatus.PREVIEW_READY,
+            page_type=PageType.APPLICATION_FORM,
             html_content=html_content,
             page_title=page_title
         )
@@ -221,7 +381,9 @@ class BrowserAutomationEngine:
             page_url=url_str,
             raw_fields=raw_fields,
             profile=profile,
-            page_title=page_title
+            page_title=page_title,
+            status=InspectionStatus.PREVIEW_READY,
+            page_type=PageType.APPLICATION_FORM,
         )
 
     def fill_approved_fields(
@@ -234,10 +396,25 @@ class BrowserAutomationEngine:
         Stage B: Revalidate session and form state, fill ONLY explicitly approved fields,
         leave browser open on page, and guarantee NO final submission is performed.
         """
-        # 1. Retrieve session
         session = self.session_manager.get_session(session_id)
 
-        # 2. Validate approved fields
+        # Guard: Check session status allows filling
+        if session.status in (
+            InspectionStatus.AUTH_REQUIRED,
+            InspectionStatus.AUTHENTICATION_REQUIRED,
+            InspectionStatus.ACCOUNT_CREATION_REQUIRED,
+            InspectionStatus.EMAIL_VERIFICATION_REQUIRED,
+            InspectionStatus.CAPTCHA_DETECTED,
+            InspectionStatus.ACCESS_RESTRICTED,
+            InspectionStatus.JOB_DETAILS_PAGE,
+            InspectionStatus.FORM_NOT_READY,
+            InspectionStatus.UNSUPPORTED_PAGE,
+        ):
+            raise AutomationException(
+                code=AutomationErrorCode.STAGE_TRANSITION_INVALID,
+                message=f"Cannot fill fields when application session status is '{session.status.value}'. Please complete authentication or navigate to the active application form first."
+            )
+
         fields_to_fill = AutomationSafetyValidator.validate_approved_fields(
             approved_ids=approved_field_ids,
             inspected_fields=session.fields,
@@ -250,7 +427,6 @@ class BrowserAutomationEngine:
 
         for item in session.fields:
             if item.field_id in approved_set:
-                # Fill operation simulation / execution
                 filled_results.append(
                     FieldFillResult(
                         field_id=item.field_id,
@@ -287,6 +463,4 @@ class BrowserAutomationEngine:
         )
 
 
-# Singleton instance
 default_browser_engine = BrowserAutomationEngine()
-
