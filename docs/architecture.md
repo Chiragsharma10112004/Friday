@@ -2,7 +2,7 @@
 
 ## Overview
 
-FRIDAY is a modular personal AI assistant and Job Application Automation System built with FastAPI, SQLite/SQLAlchemy, and a resilient multi-provider AI gateway.
+FRIDAY is a modular personal AI assistant and Job Application Automation Platform built with FastAPI, SQLite/SQLAlchemy, and a resilient multi-provider AI gateway.
 
 ---
 
@@ -49,3 +49,19 @@ FRIDAY is a modular personal AI assistant and Job Application Automation System 
 - **Absolute Submission Safety Guarantee**:
   - `submission_allowed: False` and `submission_performed: False` are hard invariant guarantees.
   - No automated final submission button clicks or form submit triggers are permitted. Final application submission is ALWAYS manual.
+
+### 6. Automated Job Discovery & Opportunity Pipeline (`app/job_discovery/`)
+- **Provider-Based Architecture (`app/job_discovery/providers/`)**:
+  - `GreenhouseDiscoveryProvider`: Discovers postings across public Greenhouse company boards.
+  - `LeverDiscoveryProvider`: Discovers postings across public Lever company boards.
+  - `ManualUrlProvider`: Delegates manual URLs into Phase 2 ingestion.
+- **Deterministic Deduplication (`app/job_discovery/deduplication.py`)**:
+  - 4-Tier deduplication: Provider + external ID, canonical URL (tracking parameter stripping), normalized company/role/location, and description content signatures.
+- **Candidate Matching & Ranking (`app/job_discovery/ranking.py`)**:
+  - Reuses Phase 1 deterministic analysis and scoring contracts without code duplication.
+  - Calculates match scores, classifications (`STRONG_MATCH`, `GOOD_MATCH`, `PARTIAL_MATCH`, `WEAK_MATCH`), matched/missing skill lists, key strengths, and key concerns.
+- **Opportunity Lifecycle & State Machine (`app/job_discovery/repository.py`)**:
+  - Manages opportunity lifecycle: `DISCOVERED` $\to$ `SAVED` $\to$ `ANALYZED` $\to$ `ASSETS_GENERATED` $\to$ `READY_TO_APPLY` $\to$ `APPLIED` $\to$ `REJECTED` / `ARCHIVED`.
+  - Rejects invalid state transitions with validation errors.
+- **End-to-End Subsystem Connectivity**:
+  - Connects discovered opportunities to Phase 1 (`POST /opportunities/{id}/analyze`), Phase 3 (`POST /opportunities/{id}/generate-assets`), and Phase 4 (`POST /opportunities/{id}/prepare-application`).

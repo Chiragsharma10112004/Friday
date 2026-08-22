@@ -38,12 +38,23 @@
 - [x] Absolute submission safety invariant: `submission_allowed=False`, `submission_performed=False`, `SUBMISSION_BLOCKED` guard.
 - [x] 100% offline deterministic unit & integration tests (`tests/test_phase4_automation.py`).
 
+### Phase 5: Automated Job Discovery & Opportunity Pipeline (Complete)
+- [x] Provider-based discovery architecture (`BaseJobProvider`, `GreenhouseDiscoveryProvider`, `LeverDiscoveryProvider`, `ManualUrlProvider`).
+- [x] Batch search query with role, keyword, company, location, and remote filtering (`POST /job-discovery/search`).
+- [x] Manual URL batch discovery delegating to Phase 2 ingestion (`POST /job-discovery/manual`).
+- [x] Deterministic 4-tier deduplication (`JobDeduplicator`).
+- [x] Candidate profile matching and ranking engine (`JobRanker`).
+- [x] Opportunity lifecycle state machine and repository (`DiscoveredOpportunity`, `OpportunityRepository`).
+- [x] Opportunity management endpoints (`GET /opportunities`, `GET /opportunities/{id}`, `PATCH /opportunities/{id}/status`).
+- [x] Seamless pipeline integration with Phase 1 (`/analyze`), Phase 3 (`/generate-assets`), and Phase 4 (`/prepare-application`).
+- [x] 100% offline deterministic unit & integration tests (`tests/test_phase5_discovery.py`).
+
 ---
 
 ## Upcoming Milestones
 
-### Phase 5: Automated Job Discovery Feeds & Application Pipeline Dashboard
-- [ ] Automated discovery feed aggregation based on profile target roles and locations.
-- [ ] Batch job scoring and ranked opportunity queues.
-- [ ] Email/Notification alerts for high-match opportunities (Match Score $\ge 85\%$).
-- [ ] Real-time application lifecycle sync and analytics dashboard.
+### Phase 6: Automated Career Alerts & Multi-Channel Interview Intelligence
+- [ ] Scheduled recurring discovery cron jobs with configurable match score thresholds ($\ge 80\%$).
+- [ ] Multi-channel notifications (Email digest, Telegram/Discord webhooks) for top opportunities.
+- [ ] AI-assisted Mock Interview simulator with custom technical and behavioral question generation based on target job requirements and candidate profile gaps.
+- [ ] Unified frontend UI integration connecting the complete discovery-to-submission pipeline.

@@ -226,30 +226,13 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
       "options": [],
       "is_sensitive": false,
       "validation_notice": null
-    },
-    {
-      "field_id": "#gender",
-      "label": "Gender (Voluntary EEO)",
-      "html_name": "job_application[gender]",
-      "control_type": "select",
-      "normalized_field": null,
-      "suggested_value": null,
-      "source": null,
-      "confidence": "UNSUPPORTED",
-      "status": "MANUAL_REQUIRED",
-      "requires_approval": true,
-      "options": ["Decline to self-identify", "Female", "Male", "Non-binary"],
-      "is_sensitive": true,
-      "validation_notice": "Demographic, compensation, and compliance questions require manual review."
     }
   ],
   "auto_fill_ready_count": 5,
   "approval_required_count": 2,
   "manual_required_count": 3,
   "unsupported_count": 0,
-  "warnings": [
-    "3 field(s) require manual review (e.g. demographic, compensation, or unmapped questions)."
-  ],
+  "warnings": [],
   "errors": [],
   "submission_allowed": false
 }
@@ -266,8 +249,7 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
     "#first_name",
     "#last_name",
     "#email",
-    "#phone",
-    "#urls_linkedin"
+    "#phone"
   ],
   "custom_answers": {
     "#expected_salary": "$160,000"
@@ -294,9 +276,120 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
   "manual_fields_remaining": ["Gender (Voluntary EEO)"],
   "submission_performed": false,
   "manual_submission_required": true,
-  "warnings": [
-    "Form fields have been filled in the browser session. Please review all fields thoroughly and submit the application manually."
-  ],
+  "warnings": [],
   "errors": []
 }
 ```
+
+---
+
+## 7. Automated Job Discovery & Opportunity Pipeline (Phase 5)
+
+### `POST /job-discovery/search`
+- **Description**: Query configured public job providers (Greenhouse, Lever), deduplicate results, match and rank against candidate profile, and store unique opportunities.
+- **Request Body** (`JobSearchQuery`):
+```json
+{
+  "keywords": ["python", "fastapi"],
+  "roles": ["Senior Backend Engineer", "AI Systems Engineer"],
+  "locations": ["Remote", "San Francisco, CA"],
+  "companies": ["anthropic", "scaleai", "figma"],
+  "remote_only": true,
+  "providers": ["greenhouse", "lever"],
+  "max_results": 20
+}
+```
+- **Response** (`JobSearchResponse`):
+```json
+{
+  "success": true,
+  "total_discovered": 12,
+  "unique_opportunities": 10,
+  "duplicates_skipped": 2,
+  "opportunities": [
+    {
+      "id": 1,
+      "external_id": "1001",
+      "provider": "greenhouse",
+      "source_url": "https://boards.greenhouse.io/anthropic/jobs/1001",
+      "application_url": "https://boards.greenhouse.io/anthropic/jobs/1001",
+      "company": "Anthropic",
+      "title": "Senior AI Systems Engineer",
+      "location": "San Francisco, CA (Remote)",
+      "is_remote": true,
+      "description": "...",
+      "status": "DISCOVERED",
+      "match_score": 88,
+      "recommendation": "STRONG_MATCH",
+      "ranking_explanation": "Candidate scored 88% fit with 3 direct matches.",
+      "matched_skills": ["Python", "FastAPI", "SQLAlchemy"],
+      "missing_skills": ["Kubernetes"],
+      "key_strengths": ["Demonstrated core skills: Python, FastAPI"],
+      "key_concerns": ["Missing required skills: Kubernetes"]
+    }
+  ],
+  "warnings": [],
+  "errors": []
+}
+```
+
+### `POST /job-discovery/manual`
+- **Description**: Batch ingest one or more manual job URLs through Phase 2 ingestion, rank against profile, and persist opportunities.
+- **Request Body** (`ManualDiscoveryRequest`):
+```json
+{
+  "urls": [
+    "https://jobs.lever.co/figma/staff-infra",
+    "https://boards.greenhouse.io/openai/jobs/555"
+  ]
+}
+```
+- **Response** (`ManualDiscoveryResponse`):
+```json
+{
+  "success": true,
+  "total_submitted": 2,
+  "unique_opportunities": 2,
+  "duplicates_skipped": 0,
+  "opportunities": [ ... ],
+  "warnings": [],
+  "errors": []
+}
+```
+
+### `GET /opportunities`
+- **Description**: List discovered opportunities with server-side filtering, sorting, and pagination.
+- **Query Parameters**:
+  - `min_match_score`: Optional integer (0-100)
+  - `company`: Optional string search
+  - `title`: Optional role search
+  - `provider`: Optional provider filter (`greenhouse`, `lever`, `manual`)
+  - `location`: Optional location search
+  - `is_remote`: Optional boolean
+  - `status`: Optional lifecycle state (`DISCOVERED`, `SAVED`, `ANALYZED`, `ASSETS_GENERATED`, `READY_TO_APPLY`, `APPLIED`, `REJECTED`, `ARCHIVED`)
+  - `sort_by`: `match_score`, `newest`, `company`, `title` (default `match_score`)
+  - `sort_order`: `asc` or `desc` (default `desc`)
+  - `page`: Integer $\ge 1$ (default 1)
+  - `page_size`: Integer 1-100 (default 20)
+- **Response**: `OpportunityListResponse`
+
+### `GET /opportunities/{opportunity_id}`
+- **Description**: Retrieve detailed opportunity record.
+- **Response**: `DiscoveredJob`
+
+### `PATCH /opportunities/{opportunity_id}/status`
+- **Description**: Update opportunity status with strict transition validation.
+- **Request Body**: `{"status": "SAVED"}`
+- **Response**: `DiscoveredJob`
+
+### `POST /opportunities/{opportunity_id}/analyze`
+- **Description**: Trigger deep Phase 1 job analysis on opportunity and advance lifecycle to `ANALYZED`.
+- **Response**: `{"opportunity_id": 1, "company": "Anthropic", "title": "Senior AI Systems Engineer", "analysis": { ... }}`
+
+### `POST /opportunities/{opportunity_id}/generate-assets`
+- **Description**: Generate Phase 3 tailored application assets for opportunity and advance lifecycle to `ASSETS_GENERATED`.
+- **Response**: `ApplicationAssetResponse`
+
+### `POST /opportunities/{opportunity_id}/prepare-application`
+- **Description**: Inspect opportunity application page via Phase 4 automation and advance lifecycle to `READY_TO_APPLY`.
+- **Response**: `InspectApplicationResponse`
