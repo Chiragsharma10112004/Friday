@@ -6,6 +6,7 @@ import tests.test_phase2_ingestion as t2
 import tests.test_phase3_assets as t3
 import tests.test_phase4_automation as t4
 import tests.test_phase5_discovery as t5
+import tests.test_phase6_application_pipeline as t6
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -18,6 +19,7 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(t3))
     suite.addTests(loader.loadTestsFromModule(t4))
     suite.addTests(loader.loadTestsFromModule(t5))
+    suite.addTests(loader.loadTestsFromModule(t6))
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)

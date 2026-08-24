@@ -1,3 +1,8 @@
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
 from fastapi import FastAPI
 
 from app.profile.api import router as profile_router
@@ -18,6 +23,12 @@ from app.memory.database import Base, engine
 from app.memory import models
 from app.applications.models import JobApplication
 from app.job_discovery.models import DiscoveredOpportunity
+from app.application_pipeline.models import (
+    TrackedApplication,
+    ApplicationTimelineEvent,
+    ApplicationInterview,
+    ApplicationStatusHistory,
+)
 
 
 app = FastAPI(

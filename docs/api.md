@@ -45,15 +45,6 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
 - **Request Body**: `AnalyzeAndSaveRequest`
 - **Response**: `AnalyzeAndSaveResponse`
 
-### `GET /applications`
-- **Description**: List tracked job applications with filtering by status and metrics summary.
-
-### `GET /applications/{app_id}`
-- **Description**: Get single application details.
-
-### `PATCH /applications/{app_id}`
-- **Description**: Update application status (e.g. `APPLIED`, `INTERVIEWING`, `OFFER`, `REJECTED`).
-
 ---
 
 ## 4. Job Ingestion & Scraping (Phase 2)
@@ -111,175 +102,21 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
   "message_tone": "professional"
 }
 ```
-- **Response** (`ApplicationAssetResponse`):
-```json
-{
-  "success": true,
-  "company": "Anthropic",
-  "role": "Senior AI Backend Engineer",
-  "match_score": 88,
-  "recommendation": "APPLY",
-  "assets": {
-    "resume": {
-      "professional_summary": "...",
-      "relevant_skills": ["Python", "FastAPI", "SQLAlchemy", "PostgreSQL"],
-      "relevant_projects": [
-        {
-          "name": "FRIDAY AI Assistant",
-          "description": "...",
-          "bullet_points": ["..."],
-          "matched_skills": ["Python", "FastAPI"]
-        }
-      ],
-      "experience_bullets": ["..."],
-      "achievement_bullets": ["..."],
-      "keywords_matched": ["Python", "FastAPI"],
-      "keywords_missing": ["Kubernetes"],
-      "sections_to_prioritize": ["Backend Skills", "AI Projects"]
-    },
-    "cover_letter": {
-      "letter_text": "...",
-      "style": "standard",
-      "key_highlights": ["..."],
-      "evidence_used": ["..."]
-    },
-    "recruiter_message": {
-      "message_text": "...",
-      "channel": "linkedin",
-      "tone": "professional",
-      "character_count": 184
-    },
-    "skill_gap": {
-      "matched_skills": ["Python", "FastAPI"],
-      "partially_matched_skills": ["Docker"],
-      "missing_skills": ["Kubernetes"],
-      "transferable_skills": ["Container orchestration concepts"],
-      "priority_gaps": [
-        {
-          "skill": "Kubernetes",
-          "priority": "HIGH",
-          "reason": "Core infrastructure requirement in job description.",
-          "evidence_from_jd": "...",
-          "suggested_action": "Complete hands-on deployment tutorial."
-        }
-      ],
-      "recommended_learning_actions": ["..."]
-    },
-    "application_summary": {
-      "overall_fit": "STRONG_MATCH",
-      "strongest_selling_points": ["..."],
-      "biggest_concerns": ["..."],
-      "missing_requirements": ["Kubernetes"],
-      "recommended_assets": ["Tailored Resume", "Cover Letter"],
-      "apply_recommendation": "APPLY"
-    }
-  },
-  "evidence_metadata": [
-    {
-      "claim": "FastAPI microservices and LLM gateway development",
-      "claim_type": "VERIFIED_CANDIDATE_FACT",
-      "source_field": "projects",
-      "confidence": "high"
-    }
-  ],
-  "warnings": [],
-  "errors": []
-}
-```
 
 ---
 
 ## 6. Browser-Assisted Application Form Automation (Phase 4)
 
 ### `POST /application-automation/inspect`
-- **Description**: Stage A: Inspect target job application form, detect ATS platform, parse visible controls, map verified candidate profile facts, and produce a human-in-the-loop preview.
+- **Description**: Stage A: Inspect target job application form, detect ATS platform (Greenhouse, Lever, Oracle CX, Generic), parse visible controls, map verified candidate profile facts, and classify page lifecycle state.
 - **Safety Invariant**: Does NOT modify the form and NEVER submits the application (`submission_allowed: false`).
-- **Request Body** (`InspectApplicationRequest`):
-```json
-{
-  "application_url": "https://boards.greenhouse.io/anthropic/jobs/12345",
-  "application_id": null,
-  "normalized_job": null
-}
-```
-- **Response** (`InspectApplicationResponse`):
-```json
-{
-  "success": true,
-  "session_id": "3f82a17b-4029-4d64-a63e-bb36a87ce71b",
-  "platform": "greenhouse",
-  "status": "PREVIEW_READY",
-  "page_url": "https://boards.greenhouse.io/anthropic/jobs/12345",
-  "page_title": "Senior AI Backend Engineer at Anthropic",
-  "fields": [
-    {
-      "field_id": "#first_name",
-      "label": "First Name",
-      "html_name": "first_name",
-      "control_type": "text",
-      "normalized_field": "first_name",
-      "suggested_value": "Chirag",
-      "source": "profile.first_name",
-      "confidence": "HIGH",
-      "status": "AUTO_FILL_READY",
-      "requires_approval": false,
-      "options": [],
-      "is_sensitive": false,
-      "validation_notice": null
-    }
-  ],
-  "auto_fill_ready_count": 5,
-  "approval_required_count": 2,
-  "manual_required_count": 3,
-  "unsupported_count": 0,
-  "warnings": [],
-  "errors": [],
-  "submission_allowed": false
-}
-```
+
+### `POST /application-automation/inspect/{session_id}/refresh`
+- **Description**: Re-inspect the active application form session after the candidate completes manual authentication or account registration in their browser.
 
 ### `POST /application-automation/fill`
 - **Description**: Stage B: Fill ONLY user-approved fields into the active browser session. Leaves the browser on the completed form for final human inspection.
-- **Safety Invariant**: NEVER submits the application (`submission_performed: false`, `manual_submission_required: true`).
-- **Request Body** (`FillApprovedFieldsRequest`):
-```json
-{
-  "session_id": "3f82a17b-4029-4d64-a63e-bb36a87ce71b",
-  "approved_field_ids": [
-    "#first_name",
-    "#last_name",
-    "#email",
-    "#phone"
-  ],
-  "custom_answers": {
-    "#expected_salary": "$160,000"
-  }
-}
-```
-- **Response** (`FillApprovedFieldsResponse`):
-```json
-{
-  "success": true,
-  "session_id": "3f82a17b-4029-4d64-a63e-bb36a87ce71b",
-  "platform": "greenhouse",
-  "fields_filled": [
-    {
-      "field_id": "#first_name",
-      "label": "First Name",
-      "normalized_field": "first_name",
-      "value_filled": "Chirag",
-      "success": true,
-      "notice": "Populated from profile.first_name"
-    }
-  ],
-  "fields_skipped": ["#gender"],
-  "manual_fields_remaining": ["Gender (Voluntary EEO)"],
-  "submission_performed": false,
-  "manual_submission_required": true,
-  "warnings": [],
-  "errors": []
-}
-```
+- **Safety Invariant**: Blocked on `AUTH_REQUIRED`, `ACCOUNT_CREATION_REQUIRED`, `CAPTCHA_DETECTED`, `JOB_DETAILS_PAGE`, `FORM_NOT_READY` with `STAGE_TRANSITION_INVALID`. NEVER submits the application (`submission_performed: false`, `manual_submission_required: true`).
 
 ---
 
@@ -287,109 +124,136 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
 
 ### `POST /job-discovery/search`
 - **Description**: Query configured public job providers (Greenhouse, Lever), deduplicate results, match and rank against candidate profile, and store unique opportunities.
-- **Request Body** (`JobSearchQuery`):
-```json
-{
-  "keywords": ["python", "fastapi"],
-  "roles": ["Senior Backend Engineer", "AI Systems Engineer"],
-  "locations": ["Remote", "San Francisco, CA"],
-  "companies": ["anthropic", "scaleai", "figma"],
-  "remote_only": true,
-  "providers": ["greenhouse", "lever"],
-  "max_results": 20
-}
-```
-- **Response** (`JobSearchResponse`):
-```json
-{
-  "success": true,
-  "total_discovered": 12,
-  "unique_opportunities": 10,
-  "duplicates_skipped": 2,
-  "opportunities": [
-    {
-      "id": 1,
-      "external_id": "1001",
-      "provider": "greenhouse",
-      "source_url": "https://boards.greenhouse.io/anthropic/jobs/1001",
-      "application_url": "https://boards.greenhouse.io/anthropic/jobs/1001",
-      "company": "Anthropic",
-      "title": "Senior AI Systems Engineer",
-      "location": "San Francisco, CA (Remote)",
-      "is_remote": true,
-      "description": "...",
-      "status": "DISCOVERED",
-      "match_score": 88,
-      "recommendation": "STRONG_MATCH",
-      "ranking_explanation": "Candidate scored 88% fit with 3 direct matches.",
-      "matched_skills": ["Python", "FastAPI", "SQLAlchemy"],
-      "missing_skills": ["Kubernetes"],
-      "key_strengths": ["Demonstrated core skills: Python, FastAPI"],
-      "key_concerns": ["Missing required skills: Kubernetes"]
-    }
-  ],
-  "warnings": [],
-  "errors": []
-}
-```
 
 ### `POST /job-discovery/manual`
 - **Description**: Batch ingest one or more manual job URLs through Phase 2 ingestion, rank against profile, and persist opportunities.
-- **Request Body** (`ManualDiscoveryRequest`):
-```json
-{
-  "urls": [
-    "https://jobs.lever.co/figma/staff-infra",
-    "https://boards.greenhouse.io/openai/jobs/555"
-  ]
-}
-```
-- **Response** (`ManualDiscoveryResponse`):
-```json
-{
-  "success": true,
-  "total_submitted": 2,
-  "unique_opportunities": 2,
-  "duplicates_skipped": 0,
-  "opportunities": [ ... ],
-  "warnings": [],
-  "errors": []
-}
-```
 
 ### `GET /opportunities`
 - **Description**: List discovered opportunities with server-side filtering, sorting, and pagination.
-- **Query Parameters**:
-  - `min_match_score`: Optional integer (0-100)
-  - `company`: Optional string search
-  - `title`: Optional role search
-  - `provider`: Optional provider filter (`greenhouse`, `lever`, `manual`)
-  - `location`: Optional location search
-  - `is_remote`: Optional boolean
-  - `status`: Optional lifecycle state (`DISCOVERED`, `SAVED`, `ANALYZED`, `ASSETS_GENERATED`, `READY_TO_APPLY`, `APPLIED`, `REJECTED`, `ARCHIVED`)
-  - `sort_by`: `match_score`, `newest`, `company`, `title` (default `match_score`)
-  - `sort_order`: `asc` or `desc` (default `desc`)
-  - `page`: Integer $\ge 1$ (default 1)
-  - `page_size`: Integer 1-100 (default 20)
-- **Response**: `OpportunityListResponse`
 
 ### `GET /opportunities/{opportunity_id}`
 - **Description**: Retrieve detailed opportunity record.
-- **Response**: `DiscoveredJob`
 
 ### `PATCH /opportunities/{opportunity_id}/status`
 - **Description**: Update opportunity status with strict transition validation.
-- **Request Body**: `{"status": "SAVED"}`
-- **Response**: `DiscoveredJob`
 
 ### `POST /opportunities/{opportunity_id}/analyze`
 - **Description**: Trigger deep Phase 1 job analysis on opportunity and advance lifecycle to `ANALYZED`.
-- **Response**: `{"opportunity_id": 1, "company": "Anthropic", "title": "Senior AI Systems Engineer", "analysis": { ... }}`
 
 ### `POST /opportunities/{opportunity_id}/generate-assets`
 - **Description**: Generate Phase 3 tailored application assets for opportunity and advance lifecycle to `ASSETS_GENERATED`.
-- **Response**: `ApplicationAssetResponse`
 
 ### `POST /opportunities/{opportunity_id}/prepare-application`
 - **Description**: Inspect opportunity application page via Phase 4 automation and advance lifecycle to `READY_TO_APPLY`.
-- **Response**: `InspectApplicationResponse`
+
+---
+
+## 8. Application Pipeline & Job Tracking (Phase 6)
+
+### `POST /applications`
+- **Description**: Create a tracked application record manually.
+- **Request Body** (`CreateApplicationRequest`):
+```json
+{
+  "company": "Anthropic",
+  "role": "Senior AI Systems Engineer",
+  "source_url": "https://boards.greenhouse.io/anthropic/jobs/1001",
+  "source_platform": "greenhouse",
+  "job_id": "anthropic-1001",
+  "location": "San Francisco, CA (Remote)",
+  "workplace_type": "Hybrid",
+  "employment_type": "Full-time",
+  "priority": "HIGH",
+  "status": "DISCOVERED",
+  "match_score": 88,
+  "recommendation": "STRONG_MATCH",
+  "notes": "Direct referral opportunity."
+}
+```
+- **Response**: `ApplicationResponse` (HTTP 201).
+
+### `POST /applications/from-opportunity/{opportunity_id}`
+- **Description**: Convert a Phase 5 discovered opportunity into a tracked application.
+- **Response**: `ApplicationResponse` (HTTP 201).
+
+### `GET /applications`
+- **Description**: List tracked applications with filtering, sorting, and pagination.
+- **Query Parameters**:
+  - `status`: Optional (`DISCOVERED`, `SAVED`, `ASSETS_READY`, `READY_TO_APPLY`, `APPLIED`, `INTERVIEWING`, `OFFER`, `REJECTED`, `WITHDRAWN`, `CLOSED`)
+  - `company`: Optional string filter
+  - `role`: Optional string filter
+  - `priority`: Optional (`LOW`, `MEDIUM`, `HIGH`, `URGENT`)
+  - `referral_status`: Optional (`NOT_REQUESTED`, `REQUESTED`, `REFERRAL_PENDING`, `REFERRED`, `DECLINED`, `NOT_AVAILABLE`)
+  - `follow_up_status`: Optional (`NONE`, `SCHEDULED`, `DUE`, `COMPLETED`, `OVERDUE`)
+  - `sort_by`: `created_at`, `updated_at`, `match_score`, `priority`, `next_follow_up_date` (default `created_at`)
+  - `sort_order`: `asc` or `desc` (default `desc`)
+  - `page`: Integer $\ge 1$ (default 1)
+  - `page_size`: Integer 1-100 (default 20)
+- **Response**: `ApplicationListResponse`.
+
+### `GET /applications/summary`
+- **Description**: Pipeline overview metrics, status and priority counts, company breakdown, and follow-up/referral totals.
+- **Response**: `PipelineSummaryResponse`.
+
+### `GET /applications/dashboard`
+- **Description**: Backward-compatible summary dashboard.
+
+### `GET /applications/follow-ups`
+- **Description**: Retrieve categorized follow-ups (`scheduled`, `due`, `overdue`) using timezone-aware calculations.
+- **Response**: `FollowUpCategoryResponse`.
+
+### `GET /applications/{application_id}`
+- **Description**: Retrieve single application record.
+- **Response**: `ApplicationResponse`.
+
+### `PATCH /applications/{application_id}`
+- **Description**: Update application metadata (company, role, priority, notes, etc.) with duplicate check protection.
+- **Request Body**: `UpdateApplicationRequest`.
+- **Response**: `ApplicationResponse`.
+
+### `POST /applications/{application_id}/status`
+- **Description**: Validated lifecycle status transition. Rejects invalid state jumps with `INVALID_STATUS_TRANSITION`.
+- **Request Body**: `{"status": "APPLIED", "note": "Submitted application."}`
+- **Response**: `ApplicationResponse`.
+
+### `POST /applications/{application_id}/mark-applied`
+- **Description**: Mark application as `APPLIED` idempotently, set `applied_at` timestamp, and create timeline event.
+- **Request Body**: `{"applied_at": "2026-08-24T12:00:00Z", "note": "Applied via ATS portal."}`
+- **Response**: `ApplicationResponse`.
+
+### `GET /applications/{application_id}/timeline`
+- **Description**: Retrieve chronological audit log of all events for this application.
+- **Response**: `List[ApplicationTimelineEventResponse]`.
+
+### `POST /applications/{application_id}/notes`
+- **Description**: Add a timestamped audit note to the application record and timeline.
+- **Request Body**: `{"note": "Hiring manager contacted on LinkedIn."}`
+- **Response**: `ApplicationResponse`.
+
+### `POST /applications/{application_id}/referral`
+- **Description**: Add or update referral tracking status, contact metadata, and dates.
+- **Request Body**: `ReferralRequest`.
+- **Response**: `ApplicationResponse`.
+
+### `POST /applications/{application_id}/follow-up`
+- **Description**: Schedule follow-up reminder date.
+- **Request Body**: `{"next_follow_up_date": "2026-08-30T10:00:00Z", "notes": "Check status."}`
+- **Response**: `ApplicationResponse`.
+
+### `POST /applications/{application_id}/follow-up/complete`
+- **Description**: Mark active follow-up reminder completed.
+- **Response**: `ApplicationResponse`.
+
+### `POST /applications/{application_id}/interviews`
+- **Description**: Schedule an interview round for the application (stages: `SCREENING`, `ONLINE_ASSESSMENT`, `TECHNICAL_ROUND`, `SYSTEM_DESIGN`, `HR_ROUND`, `HIRING_MANAGER`, `FINAL_ROUND`, `OTHER`).
+- **Request Body**: `InterviewCreateRequest`.
+- **Response**: `InterviewResponse` (HTTP 201).
+
+### `GET /applications/{application_id}/interviews`
+- **Description**: List all scheduled and past interview rounds for the application.
+- **Response**: `List[InterviewResponse]`.
+
+### `PATCH /applications/{application_id}/interviews/{interview_id}`
+- **Description**: Update interview round details, status (`SCHEDULED`, `COMPLETED`, `CANCELLED`, `RESCHEDULED`), or notes.
+- **Request Body**: `InterviewUpdateRequest`.
+- **Response**: `InterviewResponse`.

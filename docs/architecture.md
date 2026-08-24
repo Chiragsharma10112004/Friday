@@ -42,26 +42,33 @@ FRIDAY is a modular personal AI assistant and Job Application Automation Platfor
 
 ### 5. Browser-Assisted Application Form Automation (`app/application_automation/`)
 - **Two-Stage Human-in-the-Loop Model**:
-  - **Stage A (Inspect & Preview)**: Detects ATS platform (Greenhouse, Lever, Generic), parses DOM controls, maps candidate profile facts deterministically, and classifies fields into `AUTO_FILL_READY`, `APPROVAL_REQUIRED`, `MANUAL_REQUIRED`, and `UNSUPPORTED`.
-  - **Stage B (Fill Approved Fields)**: Revalidates session and fills ONLY the explicitly approved fields, leaving the browser open on the completed page.
-- **Obstacle Detection**: Automatically halts on CAPTCHA (`CAPTCHA_DETECTED`) or login walls (`AUTHENTICATION_REQUIRED`) without attempting bypasses.
-- **Sensitive Question Policy**: Demographic, salary, veteran, disability, and criminal history questions are strictly marked `MANUAL_REQUIRED`.
-- **Absolute Submission Safety Guarantee**:
-  - `submission_allowed: False` and `submission_performed: False` are hard invariant guarantees.
-  - No automated final submission button clicks or form submit triggers are permitted. Final application submission is ALWAYS manual.
+  - **Stage A (Inspect & Preview)**: Detects ATS platform (Greenhouse, Lever, Oracle CX, Generic), parses DOM controls, maps candidate profile facts deterministically, and classifies page lifecycle state (`PREVIEW_READY`, `JOB_DETAILS_PAGE`, `ACCOUNT_CREATION_REQUIRED`, `AUTH_REQUIRED`, `EMAIL_VERIFICATION_REQUIRED`, `CAPTCHA_DETECTED`, `ACCESS_RESTRICTED`, `FORM_NOT_READY`).
+  - **Stage B (Fill Approved Fields)**: Revalidates session and fills ONLY the explicitly approved fields, leaving the browser open on the completed page. Blocked on non-fillable checkpoints with `STAGE_TRANSITION_INVALID`.
+- **Session Refresh Flow**: `POST /application-automation/inspect/{session_id}/refresh` allows re-inspecting active sessions after the user completes manual authentication or registration in their browser.
+- **Sensitive Question Policy**: Passwords, OTP codes, demographic, salary, veteran, disability, and criminal history questions are strictly marked `MANUAL_REQUIRED`. Never stores or logs passwords or OTPs.
+- **Absolute Submission Safety Guarantee**: `submission_allowed: False` and `submission_performed: False` are hard invariant guarantees across all endpoints. Final application submission is ALWAYS manual.
 
 ### 6. Automated Job Discovery & Opportunity Pipeline (`app/job_discovery/`)
-- **Provider-Based Architecture (`app/job_discovery/providers/`)**:
-  - `GreenhouseDiscoveryProvider`: Discovers postings across public Greenhouse company boards.
-  - `LeverDiscoveryProvider`: Discovers postings across public Lever company boards.
-  - `ManualUrlProvider`: Delegates manual URLs into Phase 2 ingestion.
-- **Deterministic Deduplication (`app/job_discovery/deduplication.py`)**:
-  - 4-Tier deduplication: Provider + external ID, canonical URL (tracking parameter stripping), normalized company/role/location, and description content signatures.
-- **Candidate Matching & Ranking (`app/job_discovery/ranking.py`)**:
-  - Reuses Phase 1 deterministic analysis and scoring contracts without code duplication.
-  - Calculates match scores, classifications (`STRONG_MATCH`, `GOOD_MATCH`, `PARTIAL_MATCH`, `WEAK_MATCH`), matched/missing skill lists, key strengths, and key concerns.
-- **Opportunity Lifecycle & State Machine (`app/job_discovery/repository.py`)**:
-  - Manages opportunity lifecycle: `DISCOVERED` $\to$ `SAVED` $\to$ `ANALYZED` $\to$ `ASSETS_GENERATED` $\to$ `READY_TO_APPLY` $\to$ `APPLIED` $\to$ `REJECTED` / `ARCHIVED`.
-  - Rejects invalid state transitions with validation errors.
-- **End-to-End Subsystem Connectivity**:
-  - Connects discovered opportunities to Phase 1 (`POST /opportunities/{id}/analyze`), Phase 3 (`POST /opportunities/{id}/generate-assets`), and Phase 4 (`POST /opportunities/{id}/prepare-application`).
+- **Provider Architecture**: `GreenhouseDiscoveryProvider`, `LeverDiscoveryProvider`, `ManualUrlProvider`.
+- **Deterministic Deduplication**: 4-Tier deduplication (`JobDeduplicator`).
+- **Candidate Matching & Ranking**: Evaluates match fit scores, match categories, matched/missing skills, and key concerns.
+- **Lifecycle Management**: `DISCOVERED` $\to$ `SAVED` $\to$ `ANALYZED` $\to$ `ASSETS_GENERATED` $\to$ `READY_TO_APPLY` $\to$ `APPLIED` $\to$ `REJECTED` / `ARCHIVED`.
+
+### 7. Application Pipeline & Job Tracking (`app/application_pipeline/`)
+- **Core Entities & ORM Models**:
+  - `TrackedApplication`: Central application tracking record holding status, priority, match scores, dates, referral, and follow-up states.
+  - `ApplicationTimelineEvent`: Chronological audit log for all mutations (`APPLICATION_CREATED`, `STATUS_CHANGED`, `APPLICATION_MARKED_APPLIED`, `REFERRAL_ADDED`, `REFERRAL_STATUS_UPDATED`, `FOLLOW_UP_SCHEDULED`, `FOLLOW_UP_COMPLETED`, `INTERVIEW_SCHEDULED`, `INTERVIEW_UPDATED`, `OFFER_RECORDED`, `APPLICATION_REJECTED`, `APPLICATION_WITHDRAWN`, `NOTE_ADDED`).
+  - `ApplicationInterview`: Multi-round interview tracking (`stage`, `scheduled_at`, `duration_minutes`, `mode`, `meeting_url`, `status`, `notes`).
+  - `ApplicationStatusHistory`: Audit log for lifecycle status transitions (`from_status`, `to_status`, `timestamp`, `note`).
+- **Validated Lifecycle State Machine (`app/application_pipeline/transitions.py`)**:
+  - States: `DISCOVERED`, `SAVED`, `ASSETS_READY`, `READY_TO_APPLY`, `APPLIED`, `INTERVIEWING`, `OFFER`, `REJECTED`, `WITHDRAWN`, `CLOSED` (terminal).
+  - Enforces valid transition paths and automatically records timestamps (`date_saved`, `date_assets_generated`, `date_applied`, `offer_date`, `rejection_date`, `withdrawal_date`, `last_status_update`).
+- **Multi-Tier Duplicate Prevention (`app/application_pipeline/repository.py`)**:
+  - Priority 1: `profile_id + company + job_id`
+  - Priority 2 (job_id absent): `profile_id + normalized company + normalized role + normalized source_url` (case-insensitive, whitespace-normalized).
+- **Timezone-Aware Follow-Up Engine (`app/application_pipeline/reminders.py`)**:
+  - Calculates dynamic states: `NONE`, `SCHEDULED`, `DUE` (today), `OVERDUE` (past), `COMPLETED`.
+- **Referral Tracking**:
+  - Manages status (`NOT_REQUESTED`, `REQUESTED`, `REFERRAL_PENDING`, `REFERRED`, `DECLINED`, `NOT_AVAILABLE`), contact metadata, and request/referred dates.
+- **Phase 5 Opportunity Conversion**:
+  - Endpoint `POST /applications/from-opportunity/{opportunity_id}` converts discovered opportunities into tracked applications.

@@ -32,9 +32,11 @@
 - [x] Two-stage human-in-the-loop workflow:
   - Stage A: `POST /application-automation/inspect` (parse form controls, classify into `AUTO_FILL_READY`, `APPROVAL_REQUIRED`, `MANUAL_REQUIRED`, `UNSUPPORTED`).
   - Stage B: `POST /application-automation/fill` (fill ONLY approved fields; leave browser open on completed form).
-- [x] Platform adapters (`GreenhouseFormAdapter`, `LeverFormAdapter`, `GenericFormAdapter`).
-- [x] Obstacle handling (`CAPTCHA_DETECTED`, `AUTHENTICATION_REQUIRED`, `SOURCE_ACCESS_RESTRICTED`).
-- [x] Deterministic field mapping engine (`FieldMapper`).
+- [x] Platform adapters (`GreenhouseFormAdapter`, `LeverFormAdapter`, `GenericFormAdapter`, Oracle CX detection).
+- [x] Multi-signal Page State Classifier (`PREVIEW_READY`, `JOB_DETAILS_PAGE`, `ACCOUNT_CREATION_REQUIRED`, `AUTH_REQUIRED`, `EMAIL_VERIFICATION_REQUIRED`, `CAPTCHA_DETECTED`, `ACCESS_RESTRICTED`, `FORM_NOT_READY`).
+- [x] Fixed Texas Instruments `/apply/email` and 0-field false `PREVIEW_READY` bug.
+- [x] Session refresh endpoint `POST /application-automation/inspect/{session_id}/refresh`.
+- [x] Deterministic field mapping engine (`FieldMapper`) with strict password & OTP protection.
 - [x] Absolute submission safety invariant: `submission_allowed=False`, `submission_performed=False`, `SUBMISSION_BLOCKED` guard.
 - [x] 100% offline deterministic unit & integration tests (`tests/test_phase4_automation.py`).
 
@@ -49,11 +51,25 @@
 - [x] Seamless pipeline integration with Phase 1 (`/analyze`), Phase 3 (`/generate-assets`), and Phase 4 (`/prepare-application`).
 - [x] 100% offline deterministic unit & integration tests (`tests/test_phase5_discovery.py`).
 
+### Phase 6: Application Pipeline & Job Tracking (Complete)
+- [x] Dedicated application pipeline subsystem (`app/application_pipeline/`).
+- [x] SQLAlchemy models: `TrackedApplication`, `ApplicationTimelineEvent`, `ApplicationInterview`, `ApplicationStatusHistory`.
+- [x] Validated lifecycle state machine (`StatusTransitionEngine`) with terminal `CLOSED` state protection.
+- [x] Multi-tier duplicate detection: `profile_id + company + job_id` and normalized `profile_id + company + role + source_url`.
+- [x] Chronological timeline event logger (`TimelineService`) tracking all mutations and status transitions.
+- [x] Timezone-aware follow-up engine (`FollowUpManager`) calculating `SCHEDULED`, `DUE`, and `OVERDUE` states.
+- [x] Referral tracking system (`NOT_REQUESTED`, `REQUESTED`, `REFERRAL_PENDING`, `REFERRED`, `DECLINED`, `NOT_AVAILABLE`).
+- [x] Multiple interview rounds manager (`SCREENING`, `ONLINE_ASSESSMENT`, `TECHNICAL_ROUND`, `SYSTEM_DESIGN`, `HR_ROUND`, `HIRING_MANAGER`, `FINAL_ROUND`, `OTHER`).
+- [x] REST API endpoints (`/applications`, `/applications/from-opportunity/{id}`, `/applications/summary`, `/applications/follow-ups`, `/applications/dashboard`, `/applications/{id}/timeline`, `/applications/{id}/status`, `/applications/{id}/mark-applied`, `/applications/{id}/notes`, `/applications/{id}/referral`, `/applications/{id}/follow-up`, `/applications/{id}/interviews`).
+- [x] Seamless integration converting Phase 5 opportunities to tracked applications.
+- [x] Complete backward compatibility with existing Phase 1–5 endpoints and models.
+- [x] 100% offline deterministic test suite (`tests/test_phase6_application_pipeline.py`).
+
 ---
 
 ## Upcoming Milestones
 
-### Phase 6: Automated Career Alerts & Multi-Channel Interview Intelligence
+### Phase 7: Automated Career Alerts & Multi-Channel Interview Intelligence
 - [ ] Scheduled recurring discovery cron jobs with configurable match score thresholds ($\ge 80\%$).
 - [ ] Multi-channel notifications (Email digest, Telegram/Discord webhooks) for top opportunities.
 - [ ] AI-assisted Mock Interview simulator with custom technical and behavioral question generation based on target job requirements and candidate profile gaps.
