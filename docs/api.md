@@ -152,108 +152,130 @@ The FRIDAY backend exposes a high-performance, strongly typed REST API powered b
 
 ### `POST /applications`
 - **Description**: Create a tracked application record manually.
-- **Request Body** (`CreateApplicationRequest`):
-```json
-{
-  "company": "Anthropic",
-  "role": "Senior AI Systems Engineer",
-  "source_url": "https://boards.greenhouse.io/anthropic/jobs/1001",
-  "source_platform": "greenhouse",
-  "job_id": "anthropic-1001",
-  "location": "San Francisco, CA (Remote)",
-  "workplace_type": "Hybrid",
-  "employment_type": "Full-time",
-  "priority": "HIGH",
-  "status": "DISCOVERED",
-  "match_score": 88,
-  "recommendation": "STRONG_MATCH",
-  "notes": "Direct referral opportunity."
-}
-```
-- **Response**: `ApplicationResponse` (HTTP 201).
 
 ### `POST /applications/from-opportunity/{opportunity_id}`
 - **Description**: Convert a Phase 5 discovered opportunity into a tracked application.
-- **Response**: `ApplicationResponse` (HTTP 201).
 
 ### `GET /applications`
 - **Description**: List tracked applications with filtering, sorting, and pagination.
-- **Query Parameters**:
-  - `status`: Optional (`DISCOVERED`, `SAVED`, `ASSETS_READY`, `READY_TO_APPLY`, `APPLIED`, `INTERVIEWING`, `OFFER`, `REJECTED`, `WITHDRAWN`, `CLOSED`)
-  - `company`: Optional string filter
-  - `role`: Optional string filter
-  - `priority`: Optional (`LOW`, `MEDIUM`, `HIGH`, `URGENT`)
-  - `referral_status`: Optional (`NOT_REQUESTED`, `REQUESTED`, `REFERRAL_PENDING`, `REFERRED`, `DECLINED`, `NOT_AVAILABLE`)
-  - `follow_up_status`: Optional (`NONE`, `SCHEDULED`, `DUE`, `COMPLETED`, `OVERDUE`)
-  - `sort_by`: `created_at`, `updated_at`, `match_score`, `priority`, `next_follow_up_date` (default `created_at`)
-  - `sort_order`: `asc` or `desc` (default `desc`)
-  - `page`: Integer $\ge 1$ (default 1)
-  - `page_size`: Integer 1-100 (default 20)
-- **Response**: `ApplicationListResponse`.
 
 ### `GET /applications/summary`
 - **Description**: Pipeline overview metrics, status and priority counts, company breakdown, and follow-up/referral totals.
-- **Response**: `PipelineSummaryResponse`.
 
 ### `GET /applications/dashboard`
 - **Description**: Backward-compatible summary dashboard.
 
 ### `GET /applications/follow-ups`
 - **Description**: Retrieve categorized follow-ups (`scheduled`, `due`, `overdue`) using timezone-aware calculations.
-- **Response**: `FollowUpCategoryResponse`.
 
 ### `GET /applications/{application_id}`
 - **Description**: Retrieve single application record.
-- **Response**: `ApplicationResponse`.
 
 ### `PATCH /applications/{application_id}`
 - **Description**: Update application metadata (company, role, priority, notes, etc.) with duplicate check protection.
-- **Request Body**: `UpdateApplicationRequest`.
-- **Response**: `ApplicationResponse`.
 
 ### `POST /applications/{application_id}/status`
 - **Description**: Validated lifecycle status transition. Rejects invalid state jumps with `INVALID_STATUS_TRANSITION`.
-- **Request Body**: `{"status": "APPLIED", "note": "Submitted application."}`
-- **Response**: `ApplicationResponse`.
 
 ### `POST /applications/{application_id}/mark-applied`
 - **Description**: Mark application as `APPLIED` idempotently, set `applied_at` timestamp, and create timeline event.
-- **Request Body**: `{"applied_at": "2026-08-24T12:00:00Z", "note": "Applied via ATS portal."}`
-- **Response**: `ApplicationResponse`.
 
 ### `GET /applications/{application_id}/timeline`
 - **Description**: Retrieve chronological audit log of all events for this application.
-- **Response**: `List[ApplicationTimelineEventResponse]`.
 
 ### `POST /applications/{application_id}/notes`
 - **Description**: Add a timestamped audit note to the application record and timeline.
-- **Request Body**: `{"note": "Hiring manager contacted on LinkedIn."}`
-- **Response**: `ApplicationResponse`.
 
 ### `POST /applications/{application_id}/referral`
 - **Description**: Add or update referral tracking status, contact metadata, and dates.
-- **Request Body**: `ReferralRequest`.
-- **Response**: `ApplicationResponse`.
 
 ### `POST /applications/{application_id}/follow-up`
 - **Description**: Schedule follow-up reminder date.
-- **Request Body**: `{"next_follow_up_date": "2026-08-30T10:00:00Z", "notes": "Check status."}`
-- **Response**: `ApplicationResponse`.
 
 ### `POST /applications/{application_id}/follow-up/complete`
 - **Description**: Mark active follow-up reminder completed.
-- **Response**: `ApplicationResponse`.
 
 ### `POST /applications/{application_id}/interviews`
-- **Description**: Schedule an interview round for the application (stages: `SCREENING`, `ONLINE_ASSESSMENT`, `TECHNICAL_ROUND`, `SYSTEM_DESIGN`, `HR_ROUND`, `HIRING_MANAGER`, `FINAL_ROUND`, `OTHER`).
-- **Request Body**: `InterviewCreateRequest`.
-- **Response**: `InterviewResponse` (HTTP 201).
+- **Description**: Schedule an interview round for the application.
 
 ### `GET /applications/{application_id}/interviews`
 - **Description**: List all scheduled and past interview rounds for the application.
-- **Response**: `List[InterviewResponse]`.
 
 ### `PATCH /applications/{application_id}/interviews/{interview_id}`
-- **Description**: Update interview round details, status (`SCHEDULED`, `COMPLETED`, `CANCELLED`, `RESCHEDULED`), or notes.
-- **Request Body**: `InterviewUpdateRequest`.
-- **Response**: `InterviewResponse`.
+- **Description**: Update interview round details, status, or notes.
+
+---
+
+## 9. Proactive Career Intelligence & Next-Action System (Phase 7)
+
+### `GET /career-intelligence/today`
+- **Description**: Returns today's complete, prioritized action queue sorted by priority (`URGENT`, `HIGH`, `MEDIUM`, `LOW`) and score descending.
+- **Response** (`TodayActionQueueResponse`):
+```json
+{
+  "success": true,
+  "date": "2026-08-24",
+  "summary": "You have 1 urgent action(s) and 2 high-priority action(s) today.",
+  "action_count": 3,
+  "urgent_count": 1,
+  "high_priority_count": 2,
+  "actions": [
+    {
+      "id": 1,
+      "type": "FOLLOW_UP_OVERDUE",
+      "priority": "URGENT",
+      "title": "Follow-up Overdue: Scale AI",
+      "description": "Your scheduled follow-up for Data Engine Architect at Scale AI is overdue.",
+      "reason": "Follow-up date 2026-08-23 has passed without completion.",
+      "recommended_action": "Contact the recruiter or recruiter contact for Scale AI today.",
+      "score": 95,
+      "application_id": 1,
+      "opportunity_id": null,
+      "status": "ACTIVE",
+      "created_at": "2026-08-24T12:00:00Z",
+      "updated_at": "2026-08-24T12:00:00Z",
+      "metadata": {
+        "company": "Scale AI",
+        "role": "Data Engine Architect",
+        "status": "APPLIED"
+      }
+    }
+  ]
+}
+```
+
+### `GET /career-intelligence/next-actions`
+- **Description**: Query active recommendations with optional filters by priority, recommendation type, application ID, or opportunity ID.
+- **Response**: `List[ActionItemResponse]`.
+
+### `GET /career-intelligence/dashboard`
+- **Description**: Returns holistic career intelligence overview including healthy, attention-needed, stale, and critical application counts, urgent action totals, overdue follow-ups, upcoming interviews, pending referrals, and average application health.
+- **Response**: `DashboardIntelligenceResponse`.
+
+### `GET /career-intelligence/application-health`
+- **Description**: Evaluates and returns health diagnostics across all active job applications.
+- **Response**: `ApplicationHealthListResponse`.
+
+### `GET /career-intelligence/application-health/{application_id}`
+- **Description**: Returns detailed health diagnostic evaluation (`EXCELLENT`, `HEALTHY`, `ATTENTION_NEEDED`, `STALE`, `CRITICAL`), diagnostic score (0-100), reasons, and recommended action for a single application.
+- **Response**: `ApplicationHealthItem`.
+
+### `GET /career-intelligence/daily-briefing`
+- **Description**: Generates a deterministic daily executive briefing containing summary, applications requiring action, overdue follow-ups, upcoming interviews, top opportunities, and next actions.
+- **Response**: `DailyBriefingResponse`.
+
+### `GET /career-intelligence/weekly-briefing`
+- **Description**: Generates a weekly pipeline performance summary containing weekly created/applied totals, interviewing counts, offers, rejections, average match score, top companies, status distributions, and recommended focus areas.
+- **Response**: `WeeklyBriefingResponse`.
+
+### `POST /career-intelligence/recommendations/{recommendation_id}/dismiss`
+- **Description**: Dismiss an active recommendation. Applies a 7-day cooldown preventing repetitive recommendation spam.
+- **Response**: `ActionItemResponse`.
+
+### `POST /career-intelligence/recommendations/{recommendation_id}/complete`
+- **Description**: Mark an active recommendation as completed.
+- **Response**: `ActionItemResponse`.
+
+### `POST /career-intelligence/recommendations/refresh`
+- **Description**: Deterministically recalculates recommendations across all applications and opportunities. Creates new recommendations, updates existing active recommendations, and expires invalid ones. Never performs external network calls or status transitions.
+- **Response**: `RefreshResponse`.

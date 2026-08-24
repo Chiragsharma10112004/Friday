@@ -72,3 +72,22 @@ FRIDAY is a modular personal AI assistant and Job Application Automation Platfor
   - Manages status (`NOT_REQUESTED`, `REQUESTED`, `REFERRAL_PENDING`, `REFERRED`, `DECLINED`, `NOT_AVAILABLE`), contact metadata, and request/referred dates.
 - **Phase 5 Opportunity Conversion**:
   - Endpoint `POST /applications/from-opportunity/{opportunity_id}` converts discovered opportunities into tracked applications.
+
+### 8. Proactive Career Intelligence & Next-Action System (`app/career_intelligence/`)
+- **Proactive Paradigm**:
+  - Analyzes the user's application pipeline and opportunity funnel to generate proactive next-actions, daily briefings, and diagnostic health assessments.
+- **Explainable Priority Scoring Engine (`app/career_intelligence/priority_engine.py`)**:
+  - Computes a deterministic 0–100 score considering 7 multi-factor weights: Match Score (up to +30), User Priority (up to +25), Referral Advantage (up to +15), Application Lifecycle State (up to +20), Follow-up Urgency (up to +25), Interview Urgency (up to +30), and Staleness (up to +20).
+- **Application Health Engine (`app/career_intelligence/health_engine.py`)**:
+  - Evaluates application vital signs and classifies applications into: `EXCELLENT`, `HEALTHY`, `ATTENTION_NEEDED`, `STALE`, and `CRITICAL`, accompanied by actionable diagnostic recommendations.
+- **Deduplicated Recommendation Lifecycle (`app/career_intelligence/recommendation_engine.py`, `repository.py`)**:
+  - Tracks recommendations in `career_recommendations` table with status: `ACTIVE`, `DISMISSED`, `COMPLETED`, `EXPIRED`.
+  - Idempotently creates and updates active recommendations.
+  - Automatically marks stale recommendations as `EXPIRED` when underlying conditions clear.
+  - Enforces a 7-day cooldown on `DISMISSED` recommendations.
+- **Career Briefing Engine (`app/career_intelligence/briefing_engine.py`)**:
+  - `generate_daily_briefing`: Synthesizes urgent actions, upcoming interviews, pending referrals, and high-match opportunities into a daily queue.
+  - `generate_weekly_briefing`: Synthesizes velocity metrics, interview stage pipelines, offers, and focus recommendations.
+- **Safety Invariants**:
+  - 100% deterministic and offline analytical calculations.
+  - Strictly forbidden from submitting job applications, sending recruiter messages, dispatching emails, or performing browser mutations.

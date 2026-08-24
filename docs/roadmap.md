@@ -65,12 +65,24 @@
 - [x] Complete backward compatibility with existing Phase 1–5 endpoints and models.
 - [x] 100% offline deterministic test suite (`tests/test_phase6_application_pipeline.py`).
 
+### Phase 7: Proactive Career Intelligence & Next-Action System (Complete)
+- [x] Dedicated career intelligence subsystem (`app/career_intelligence/`).
+- [x] SQLAlchemy models: `CareerRecommendation` (`career_recommendations` table).
+- [x] Explainable priority scoring engine (`ApplicationPriorityEngine`) computing 0–100 score across 7 multi-factor weights.
+- [x] Diagnostic application health engine (`ApplicationHealthEngine`) evaluating `EXCELLENT`, `HEALTHY`, `ATTENTION_NEEDED`, `STALE`, and `CRITICAL` states.
+- [x] Proactive recommendation engine (`RecommendationEngine`) generating deduplicated, actionable recommendations.
+- [x] Daily & weekly briefing synthesis (`CareerBriefingEngine`).
+- [x] Recommendation lifecycle state management (`ACTIVE`, `DISMISSED`, `COMPLETED`, `EXPIRED`) with 7-day cooldown.
+- [x] REST API endpoints (`/career-intelligence/today`, `/career-intelligence/next-actions`, `/career-intelligence/dashboard`, `/career-intelligence/application-health`, `/career-intelligence/application-health/{id}`, `/career-intelligence/daily-briefing`, `/career-intelligence/weekly-briefing`, `/career-intelligence/recommendations/{id}/dismiss`, `/career-intelligence/recommendations/{id}/complete`, `/career-intelligence/recommendations/refresh`).
+- [x] Strict safety invariants: No automated submissions, no external messages/emails dispatched.
+- [x] 100% offline deterministic test suite (`tests/test_phase7_career_intelligence.py`).
+
 ---
 
 ## Upcoming Milestones
 
-### Phase 7: Automated Career Alerts & Multi-Channel Interview Intelligence
-- [ ] Scheduled recurring discovery cron jobs with configurable match score thresholds ($\ge 80\%$).
-- [ ] Multi-channel notifications (Email digest, Telegram/Discord webhooks) for top opportunities.
+### Phase 8: Multi-Channel Alerts & AI Mock Interview Simulation
+- [ ] Scheduled recurring discovery cron jobs with configurable match score thresholds.
+- [ ] Multi-channel notifications (Email digest, Telegram/Discord webhooks) for urgent action items.
 - [ ] AI-assisted Mock Interview simulator with custom technical and behavioral question generation based on target job requirements and candidate profile gaps.
 - [ ] Unified frontend UI integration connecting the complete discovery-to-submission pipeline.

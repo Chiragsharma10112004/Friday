@@ -16,6 +16,7 @@ from app.api.application_assets import router as application_assets_router
 from app.api.application_automation import router as application_automation_router
 from app.api.job_discovery import router as job_discovery_router
 from app.api.opportunities import router as opportunities_router
+from app.api.career_intelligence import router as career_intelligence_router
 
 from app.memory.database import Base, engine
 
@@ -29,6 +30,7 @@ from app.application_pipeline.models import (
     ApplicationInterview,
     ApplicationStatusHistory,
 )
+from app.career_intelligence.models import CareerRecommendation
 
 
 app = FastAPI(
@@ -52,6 +54,7 @@ app.include_router(application_assets_router)
 app.include_router(application_automation_router)
 app.include_router(job_discovery_router)
 app.include_router(opportunities_router)
+app.include_router(career_intelligence_router)
 
 @app.get("/")
 def root():
