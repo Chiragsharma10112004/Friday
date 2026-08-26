@@ -7,7 +7,8 @@ import tests.test_phase3_assets as t3
 import tests.test_phase4_automation as t4
 import tests.test_phase5_discovery as t5
 import tests.test_phase6_application_pipeline as t6
-import tests.test_phase7_career_intelligence as t7
+import tests.test_phase7_career_intelligence as t7_ci
+import tests.test_phase7_autonomous_workflow as t7_wf
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -21,7 +22,8 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(t4))
     suite.addTests(loader.loadTestsFromModule(t5))
     suite.addTests(loader.loadTestsFromModule(t6))
-    suite.addTests(loader.loadTestsFromModule(t7))
+    suite.addTests(loader.loadTestsFromModule(t7_ci))
+    suite.addTests(loader.loadTestsFromModule(t7_wf))
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)

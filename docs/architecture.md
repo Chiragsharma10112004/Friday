@@ -91,3 +91,24 @@ FRIDAY is a modular personal AI assistant and Job Application Automation Platfor
 - **Safety Invariants**:
   - 100% deterministic and offline analytical calculations.
   - Strictly forbidden from submitting job applications, sending recruiter messages, dispatching emails, or performing browser mutations.
+### `9. Autonomous Workflow & Application Orchestration (`app/autonomous_workflow/`)
+- **End-to-End Orchestration**:
+  - Connects the entire lifecycle: Phase 5 Discovery $\to$ Phase 1 AI Job Analysis & Matching $\to$ Phase 6 Pipeline Tracking $\to$ Phase 3 Resume & Cover Letter Generation $\to$ Phase 4 Form Inspection $\to$ Phase 4 Safe Field Autofill $\to$ Human Checkpoints $\to$ Manual Portal Submission $\to$ Phase 6 Referral & Interview Tracking.
+- **Strict State Transition Machine (`WorkflowStateMachine`)**:
+  - 24 discrete states across preparation, inspection, autofill, checkpoints, and terminal completion.
+  - Enforces valid transition graphs and prevents operations on terminal `CANCELLED` and `CLOSED` workflows.
+- **Intelligent Job Ranking Engine (`JobRankerEngine`)**:
+  - Computes composite fit scores, assigns priority (`URGENT`, `HIGH`, `MEDIUM`, `LOW`), recommendations, and explicit risk flags.
+- **Application Execution Planner (`ApplicationPlanner`)**:
+  - Synthesizes personalized multi-step plans with explicit approval tags for human review.
+- **Referral Integration (`WorkflowReferralManager`)**:
+  - Links referral status updates directly into Phase 6 application records while strictly prohibiting automated outreach.
+- **Autonomous Discovery Scheduler (`DiscoveryScheduler`)**:
+  - Automates periodic opportunity scans and queues top-tier job leads into actionable workflows.
+- **Hard Safety Guarantees**:
+  1. *Zero Automated Submissions*: Applications are strictly submitted by the candidate on the target portal.
+  2. *Zero Credential Storage*: Passwords and OTPs are never stored, logged, or requested.
+  3. *Safe Non-Sensitive Autofill*: Only approved non-sensitive candidate profile fields are filled.
+  4. *Deterministic Pauses*: Automatically pauses at `AUTH_REQUIRED`, `ACCOUNT_CREATION_REQUIRED`, `CAPTCHA_DETECTED`, `EMAIL_VERIFICATION_REQUIRED`, and `JOB_DETAILS_PAGE`.
+  5. *100% Offline & Deterministic*: Full test coverage operates without external live network calls.
+
