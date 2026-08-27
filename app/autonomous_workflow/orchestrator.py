@@ -656,14 +656,36 @@ class AutonomousWorkflowOrchestrator:
                     profile=prof
                 )
                 session_token = inspect_res.session_id
+                session = default_browser_engine.session_manager.get_session(session_token)
                 meta["session_id"] = session_token
                 wf.metadata_json = json.dumps(meta)
                 db.commit()
 
+            if session and session.fields:
+                field_map = {f.field_id: f for f in session.fields}
+                if not approved_field_ids:
+                    from app.application_automation.schemas import FieldStatus
+                    approved_field_ids = [
+                        f.field_id for f in session.fields
+                        if not getattr(f, "is_sensitive", False) and getattr(f, "status", None) != FieldStatus.MANUAL_REQUIRED
+                    ]
+                else:
+                    normalized_ids = []
+                    for fid in approved_field_ids:
+                        if fid in field_map:
+                            normalized_ids.append(fid)
+                        elif f"#{fid}" in field_map:
+                            normalized_ids.append(f"#{fid}")
+                        elif f"[name='{fid}']" in field_map:
+                            normalized_ids.append(f"[name='{fid}']")
+                        else:
+                            normalized_ids.append(fid)
+                    approved_field_ids = normalized_ids
+
             fill_req = FillApprovedFieldsRequest(
                 session_id=session_token,
                 application_url=wf.source_url or "https://boards.greenhouse.io/figma/jobs/606",
-                approved_field_ids=approved_field_ids or ["first_name", "last_name", "email", "phone", "linkedin_url"],
+                approved_field_ids=approved_field_ids or ["#first_name", "#last_name", "#email", "#phone"],
                 application_id=wf.application_id
             )
             fill_res = ApplicationAutomationService.fill_form(fill_req)
