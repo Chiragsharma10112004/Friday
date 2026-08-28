@@ -42,10 +42,8 @@ def list_opportunities_endpoint(
     location: Optional[str] = None,
     is_remote: Optional[bool] = None,
     status: Optional[PipelineStatus] = None,
-    sort_by: str = Query("match_score", regex="^(match_score|newest|company|title)$"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    sort_by: str = Query("match_score", pattern="^(match_score|newest|company|title)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db)
 ):
     params = OpportunityFilterParams(
