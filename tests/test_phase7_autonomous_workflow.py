@@ -1,4 +1,6 @@
 import unittest
+import json
+from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
@@ -83,6 +85,88 @@ class Phase7AutonomousWorkflowTests(unittest.TestCase):
 
     def setUp(self):
         self.db.rollback()
+
+    def _get_mock_analysis(self):
+        return {
+            "match_score": 88,
+            "recommendation": "APPLY",
+            "strong_matches": ["Python", "FastAPI"],
+            "project_matches": ["FRIDAY"],
+            "partial_matches": [],
+            "missing_skills": [],
+            "learnable_skills": [],
+            "reason": "Strong match",
+            "resume_focus": "FastAPI",
+            "interview_topics": ["Python"]
+        }
+
+    def _get_mock_ai_response(self):
+        return {
+            "resume": {
+                "professional_summary": "Fullstack Engineer specializing in Python & React",
+                "relevant_skills": ["Python", "React", "PostgreSQL"],
+                "experience_bullets": ["Built scalable services"],
+                "achievement_bullets": ["Improved latency by 40%"]
+            },
+            "cover_letter": {
+                "salutation": "Dear Hiring Team,",
+                "opening": "I am excited to apply...",
+                "body_paragraphs": ["My background aligns well..."],
+                "closing": "Looking forward to speaking...",
+                "sign_off": "Sincerely,\\nAlex Mercer"
+            },
+            "recruiter_message": {
+                "subject": "Alex Mercer - Fullstack Engineer Application",
+                "message_body": "Hi there, I recently applied..."
+            },
+            "gap_analysis": {
+                "overall_score": 85,
+                "matching_skills": ["Python", "React"],
+                "missing_skills": [],
+                "recommendations": ["Highlight recent projects"]
+            },
+            "application_summary": {
+                "overall_fit": "STRONG_MATCH",
+                "strongest_selling_points": ["Python production experience"],
+                "biggest_concerns": [],
+                "missing_requirements": [],
+                "recommended_assets": ["Tailored Resume"],
+                "apply_recommendation": "APPLY"
+            },
+            "evidence_metadata": []
+        }
+
+    def _get_sample_greenhouse_html(self):
+        return """
+        <html>
+        <head><title>Senior Platform Engineer at AutomationCorp</title></head>
+        <body>
+            <form id="application_form" action="/apply">
+                <div class="field">
+                    <label for="first_name">First Name *</label>
+                    <input type="text" id="first_name" name="first_name" required />
+                </div>
+                <div class="field">
+                    <label for="last_name">Last Name *</label>
+                    <input type="text" id="last_name" name="last_name" required />
+                </div>
+                <div class="field">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" required />
+                </div>
+                <div class="field">
+                    <label for="phone">Phone *</label>
+                    <input type="tel" id="phone" name="phone" />
+                </div>
+                <div class="field">
+                    <label for="job_application_answers_attributes_0_text_value">LinkedIn Profile</label>
+                    <input type="text" id="job_application_answers_attributes_0_text_value" name="job_application[answers_attributes][0][text_value]" />
+                </div>
+                <button type="submit" id="submit_app">Submit Application</button>
+            </form>
+        </body>
+        </html>
+        """
 
     def test_01_create_workflow_manually(self):
         wf = default_workflow_service.create_workflow(
@@ -237,7 +321,12 @@ class Phase7AutonomousWorkflowTests(unittest.TestCase):
         self.assertTrue(wf_model.user_action_required)
         self.assertEqual(wf_model.pause_reason, PauseReason.CAPTCHA_DETECTED.value)
 
-    def test_10_asset_generation_integration(self):
+    @patch("app.application_assets.service.process_message")
+    @patch("app.application_assets.service.analyze_job")
+    def test_10_asset_generation_integration(self, mock_analyze, mock_process):
+        mock_analyze.return_value = self._get_mock_analysis()
+        mock_process.return_value = json.dumps(self._get_mock_ai_response())
+
         wf = default_workflow_service.create_workflow(
             company="Figma",
             role="Fullstack Engineer",
@@ -250,7 +339,17 @@ class Phase7AutonomousWorkflowTests(unittest.TestCase):
         updated_wf = default_workflow_service.get_workflow(wf.id, self.db)
         self.assertEqual(updated_wf.workflow_status, WorkflowStatus.ASSETS_READY)
 
-    def test_11_inspection_and_autofill_approval(self):
+    @patch("app.application_automation.browser.SafeHttpClient.get")
+    @patch("app.application_assets.service.process_message")
+    @patch("app.application_assets.service.analyze_job")
+    def test_11_inspection_and_autofill_approval(self, mock_analyze, mock_process, mock_http_get):
+        mock_analyze.return_value = self._get_mock_analysis()
+        mock_process.return_value = json.dumps(self._get_mock_ai_response())
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = self._get_sample_greenhouse_html()
+        mock_http_get.return_value = mock_response
+
         wf = default_workflow_service.create_workflow(
             company="Airbnb",
             role="Backend Engineer",
