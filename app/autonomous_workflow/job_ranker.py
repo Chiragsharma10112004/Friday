@@ -1,20 +1,21 @@
-from typing import Dict, Any, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.autonomous_workflow.schemas import WorkflowPriority
 
 
 class JobRankingResult(BaseModel):
-    final_score: int = Field(ge=0, le=100)
-    priority: WorkflowPriority
-    recommendation: str
-    reasons: List[str]
-    risk_flags: List[str]
+    final_score: int = Field(ge=0, le=100, description="Calculated prioritization score between 0 and 100")
+    priority: WorkflowPriority = Field(description="Actionable workflow priority tier")
+    recommendation: str = Field(description="Recommended candidate action category")
+    reasons: List[str] = Field(default_factory=list, description="Deterministic justifications for score and priority")
+    risk_flags: List[str] = Field(default_factory=list, description="Identified candidate risks or skill gap warnings")
 
 
 class JobRankerEngine:
     """
     Intelligent, deterministic ranking and prioritization engine for job opportunities and workflows.
+    Calculates dynamic action priority, fit recommendations, and risk flags based on profile alignment.
     """
 
     DEFAULT_URGENT_THRESHOLD = 85
@@ -31,10 +32,24 @@ class JobRankerEngine:
         is_remote: Optional[bool] = None,
         urgent_flag: bool = False,
     ) -> JobRankingResult:
+        """
+        Rank a job opportunity or workflow candidate deterministically.
+
+        Args:
+            match_score: Base profile match score (0-100), or None for default baseline (65).
+            recommendation: Optional upstream recommendation category from AI match analysis.
+            missing_skills_count: Count of critical skill gaps identified in job requirements.
+            has_referral: Whether an active employee referral connection exists (+10 score advantage).
+            is_remote: Whether the role offers remote work flexibility.
+            urgent_flag: Explicit manual or system flag forcing URGENT priority tier.
+
+        Returns:
+            JobRankingResult containing final_score, priority, recommendation, reasons, and risk_flags.
+        """
         reasons: List[str] = []
         risk_flags: List[str] = []
 
-        base_score = match_score if match_score is not None else 65
+        base_score = max(0, min(100, match_score)) if match_score is not None else 65
 
         # Factor adjustments
         score = base_score
@@ -49,6 +64,9 @@ class JobRankerEngine:
 
         if is_remote:
             reasons.append("Remote workplace flexibility")
+
+        if recommendation and recommendation in ("STRONGLY_RECOMMENDED", "STRONG_MATCH"):
+            reasons.append("Strong candidate profile match confirmed")
 
         # Determine priority and recommendation
         if score >= cls.DEFAULT_URGENT_THRESHOLD or urgent_flag:
