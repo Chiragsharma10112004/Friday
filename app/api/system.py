@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter
 from app.config import APP_NAME, VERSION, ENV
 
@@ -10,4 +11,11 @@ def status():
         "version": VERSION,
         "environment": ENV,
         "status": "Online"
+    }
+
+@router.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }

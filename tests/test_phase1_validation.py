@@ -55,6 +55,18 @@ class Phase1ValidationTests(unittest.TestCase):
         resp = process_message(messages, preferred_provider="ollama")
         self.assertEqual(resp, "Gemini fallback response")
 
+    def test_health_endpoint(self):
+        """Verify lightweight /health endpoint returns basic health status and UTC timestamp."""
+        from fastapi.testclient import TestClient
+        from app.main import app
+
+        client = TestClient(app)
+        response = client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get("status"), "healthy")
+        self.assertIn("timestamp", data)
+
 
 if __name__ == "__main__":
     unittest.main()
