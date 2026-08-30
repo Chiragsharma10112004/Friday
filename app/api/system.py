@@ -19,3 +19,13 @@ def health():
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+@router.get("/health/detailed")
+def health_detailed():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "application": APP_NAME,
+        "version": VERSION,
+        "environment": ENV
+    }

@@ -67,6 +67,22 @@ class Phase1ValidationTests(unittest.TestCase):
         self.assertEqual(data.get("status"), "healthy")
         self.assertIn("timestamp", data)
 
+    def test_detailed_health_endpoint(self):
+        """Verify /health/detailed endpoint returns status, timestamp, application name, version, and environment."""
+        from fastapi.testclient import TestClient
+        from app.main import app
+        from app.config import APP_NAME, VERSION, ENV
+
+        client = TestClient(app)
+        response = client.get("/health/detailed")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get("status"), "healthy")
+        self.assertIn("timestamp", data)
+        self.assertEqual(data.get("application"), APP_NAME)
+        self.assertEqual(data.get("version"), VERSION)
+        self.assertEqual(data.get("environment"), ENV)
+
 
 if __name__ == "__main__":
     unittest.main()
