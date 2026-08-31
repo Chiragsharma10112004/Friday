@@ -61,7 +61,6 @@ class ApplicationPriorityEngine:
                 reasoning.append(f"Good match score ({ms_val}%)")
             elif ms_val >= 60:
                 breakdown["match_score"] = 10
-                reasoning.append(f"Moderate match score ({ms_val}%)")
             else:
                 breakdown["match_score"] = 0
 

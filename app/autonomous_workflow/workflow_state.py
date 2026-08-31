@@ -1,4 +1,4 @@
-from typing import Set, Dict, List
+from typing import Set, Dict, List, Optional, Union
 from app.autonomous_workflow.schemas import WorkflowStatus
 from app.autonomous_workflow.errors import WorkflowErrorCode, WorkflowException
 
@@ -210,22 +210,56 @@ class WorkflowStateMachine:
     TERMINAL_STATES = {WorkflowStatus.CANCELLED, WorkflowStatus.CLOSED}
 
     @classmethod
-    def can_transition(cls, from_status: WorkflowStatus, to_status: WorkflowStatus) -> bool:
-        if from_status == to_status:
-            return True
-        allowed = cls._TRANSITIONS.get(from_status, set())
-        return to_status in allowed
+    def _coerce_status(cls, status: Union[WorkflowStatus, str, None]) -> Optional[WorkflowStatus]:
+        """Defensively coerces a WorkflowStatus enum or string to a validated WorkflowStatus."""
+        if isinstance(status, WorkflowStatus):
+            return status
+        if isinstance(status, str):
+            try:
+                return WorkflowStatus(status)
+            except ValueError:
+                return None
+        return None
 
     @classmethod
-    def validate_transition(cls, from_status: WorkflowStatus, to_status: WorkflowStatus, workflow_id: int = 0):
-        if not cls.can_transition(from_status, to_status):
+    def can_transition(cls, from_status: Union[WorkflowStatus, str], to_status: Union[WorkflowStatus, str]) -> bool:
+        """Determines whether a transition between two workflow statuses is permitted."""
+        f_enum = cls._coerce_status(from_status)
+        t_enum = cls._coerce_status(to_status)
+        if f_enum is None or t_enum is None:
+            return False
+        if f_enum == t_enum:
+            return True
+        allowed = cls._TRANSITIONS.get(f_enum, set())
+        return t_enum in allowed
+
+    @classmethod
+    def validate_transition(
+        cls,
+        from_status: Union[WorkflowStatus, str],
+        to_status: Union[WorkflowStatus, str],
+        workflow_id: int = 0
+    ) -> None:
+        """
+        Validates transition legality between statuses, raising a WorkflowException on disallowed transitions.
+        """
+        f_enum = cls._coerce_status(from_status)
+        t_enum = cls._coerce_status(to_status)
+        from_str = f_enum.value if f_enum else str(from_status)
+        to_str = t_enum.value if t_enum else str(to_status)
+
+        if f_enum is None or t_enum is None or not cls.can_transition(f_enum, t_enum):
             raise WorkflowException(
                 code=WorkflowErrorCode.INVALID_WORKFLOW_TRANSITION,
-                message=f"Cannot transition workflow from '{from_status.value}' to '{to_status.value}'.",
+                message=f"Cannot transition workflow from '{from_str}' to '{to_str}'.",
                 workflow_id=workflow_id,
-                details={"from_status": from_status.value, "to_status": to_status.value}
+                details={"from_status": from_str, "to_status": to_str}
             )
 
     @classmethod
-    def get_valid_next_states(cls, current_status: WorkflowStatus) -> List[WorkflowStatus]:
-        return list(cls._TRANSITIONS.get(current_status, set()))
+    def get_valid_next_states(cls, current_status: Union[WorkflowStatus, str]) -> List[WorkflowStatus]:
+        """Returns the list of valid subsequent workflow statuses from the current state."""
+        c_enum = cls._coerce_status(current_status)
+        if c_enum is None:
+            return []
+        return list(cls._TRANSITIONS.get(c_enum, set()))
