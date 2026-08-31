@@ -1,5 +1,5 @@
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional
+from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
 from app.application_pipeline.models import TrackedApplication
 from app.application_pipeline.schemas import ApplicationStatus, ApplicationPriority, ReferralStatus, FollowUpStatus
@@ -18,6 +18,16 @@ class ApplicationPriorityEngine:
         app: TrackedApplication,
         now: Optional[datetime] = None
     ) -> PriorityScoreResult:
+        """
+        Calculate the multi-factor priority score and explainable breakdown for an application.
+
+        Args:
+            app: The TrackedApplication entity to evaluate.
+            now: Current timestamp (defaults to timezone.utc now).
+
+        Returns:
+            PriorityScoreResult with total_score (0-100), breakdown dict, and human-readable reasoning list.
+        """
         now = now or datetime.now(timezone.utc)
         if now.tzinfo is None:
             now = now.replace(tzinfo=timezone.utc)
@@ -36,18 +46,22 @@ class ApplicationPriorityEngine:
         # A. Match Score
         ms = app.match_score
         if ms is not None:
-            if ms >= 90:
+            try:
+                ms_val = max(0, min(100, int(ms)))
+            except (ValueError, TypeError):
+                ms_val = 0
+            if ms_val >= 90:
                 breakdown["match_score"] = 30
-                reasoning.append(f"Exceptional match score ({ms}%)")
-            elif ms >= 80:
+                reasoning.append(f"Exceptional match score ({ms_val}%)")
+            elif ms_val >= 80:
                 breakdown["match_score"] = 25
-                reasoning.append(f"Strong match score ({ms}%)")
-            elif ms >= 70:
+                reasoning.append(f"Strong match score ({ms_val}%)")
+            elif ms_val >= 70:
                 breakdown["match_score"] = 20
-                reasoning.append(f"Good match score ({ms}%)")
-            elif ms >= 60:
+                reasoning.append(f"Good match score ({ms_val}%)")
+            elif ms_val >= 60:
                 breakdown["match_score"] = 10
-                reasoning.append(f"Moderate match score ({ms}%)")
+                reasoning.append(f"Moderate match score ({ms_val}%)")
             else:
                 breakdown["match_score"] = 0
 
