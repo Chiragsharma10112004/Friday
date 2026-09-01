@@ -20,6 +20,16 @@ class WorkflowReferralManager:
         workflow: AutonomousWorkflow,
         app: Optional[TrackedApplication] = None
     ) -> bool:
+        """
+        Determines whether seeking an employee referral should be proactively recommended.
+
+        Args:
+            workflow: The active autonomous workflow entity.
+            app: Optional associated TrackedApplication entity.
+
+        Returns:
+            True if candidate match score >= 70% and no referral is currently active or pending.
+        """
         if app and app.referral_status in (ReferralStatus.REFERRED.value, ReferralStatus.REFERRAL_PENDING.value):
             return False
         return (workflow.match_score or 0) >= 70
@@ -34,6 +44,20 @@ class WorkflowReferralManager:
         referral_status: Optional[str] = None,
         referral_notes: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Updates referral tracking details on the associated TrackedApplication and logs an audit trail event.
+
+        Args:
+            db: SQLAlchemy database session.
+            workflow: AutonomousWorkflow instance being updated.
+            referral_contact_name: Name of the employee/contact providing the referral.
+            referral_contact_identifier: Email, LinkedIn handle, or employee ID of the referrer.
+            referral_status: Target ReferralStatus enum value (e.g. REQUESTED, REFERRED).
+            referral_notes: User notes or guidance regarding the referral outreach.
+
+        Returns:
+            Dict containing the updated referral tracking state.
+        """
         app: Optional[TrackedApplication] = None
         if workflow.application_id:
             app = db.query(TrackedApplication).filter(TrackedApplication.id == workflow.application_id).first()
