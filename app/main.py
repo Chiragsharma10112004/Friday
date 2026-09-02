@@ -18,6 +18,7 @@ from app.api.job_discovery import router as job_discovery_router
 from app.api.opportunities import router as opportunities_router
 from app.api.career_intelligence import router as career_intelligence_router
 from app.api.autonomous_workflow import router as autonomous_workflow_router
+from app.api.application_feedback import router as application_feedback_router
 
 from app.memory.database import Base, engine
 
@@ -38,6 +39,12 @@ from app.autonomous_workflow.models import (
     WorkflowApproval,
     WorkflowActionLog,
     WorkflowRetry,
+)
+from app.application_feedback.models import (
+    ApplicationOutcomeFeedback,
+    ApplicationAssetVersion,
+    ApplicationFieldIssue,
+    FeedbackLearningSignal,
 )
 
 
@@ -64,6 +71,7 @@ app.include_router(job_discovery_router)
 app.include_router(opportunities_router)
 app.include_router(career_intelligence_router)
 app.include_router(autonomous_workflow_router)
+app.include_router(application_feedback_router)
 
 @app.get("/")
 def root():
