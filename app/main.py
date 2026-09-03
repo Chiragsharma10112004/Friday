@@ -19,6 +19,8 @@ from app.api.opportunities import router as opportunities_router
 from app.api.career_intelligence import router as career_intelligence_router
 from app.api.autonomous_workflow import router as autonomous_workflow_router
 from app.api.application_feedback import router as application_feedback_router
+from app.api.developer import router as developer_router
+from app.api.self_healing import router as self_healing_router
 
 from app.memory.database import Base, engine
 
@@ -72,6 +74,8 @@ app.include_router(opportunities_router)
 app.include_router(career_intelligence_router)
 app.include_router(autonomous_workflow_router)
 app.include_router(application_feedback_router)
+app.include_router(developer_router)
+app.include_router(self_healing_router)
 
 @app.get("/")
 def root():

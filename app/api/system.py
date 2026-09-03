@@ -29,3 +29,33 @@ def health_detailed():
         "version": VERSION,
         "environment": ENV
     }
+
+@router.get("/health/readiness")
+def health_readiness():
+    from app.memory.database import SessionLocal
+    db_status = "ready"
+    try:
+        db = SessionLocal()
+        db.execute(__import__("sqlalchemy").text("SELECT 1"))
+        db.close()
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    return {
+        "status": "ready" if db_status == "ready" else "degraded",
+        "database": db_status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "application": APP_NAME,
+        "version": VERSION,
+    }
+
+@router.get("/health/diagnostics")
+def health_diagnostics():
+    from app.core.self_healing.service import default_self_healing_service
+    history = default_self_healing_service.get_audit_history()
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "total_self_healing_events": len(history),
+        "recent_recovery_events": [h.dict() for h in history[:5]],
+    }

@@ -9,6 +9,8 @@ import tests.test_phase5_discovery as t5
 import tests.test_phase6_application_pipeline as t6
 import tests.test_phase7_career_intelligence as t7_ci
 import tests.test_phase7_autonomous_workflow as t7_wf
+import tests.test_phase8_application_feedback as t8
+import tests.test_phase9_self_healing as t9
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -24,6 +26,8 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(t6))
     suite.addTests(loader.loadTestsFromModule(t7_ci))
     suite.addTests(loader.loadTestsFromModule(t7_wf))
+    suite.addTests(loader.loadTestsFromModule(t8))
+    suite.addTests(loader.loadTestsFromModule(t9))
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
