@@ -1,28 +1,18 @@
-# Python
+node_modules/
+.venv/
+venv/
 __pycache__/
-*.py[cod]
 *.pyc
 *.pyo
 *.pyd
-
-# Virtual environment
-.venv/
-venv/
-
-# Environment
-.env
-
-# Database
 *.db
 *.sqlite3
-
-# Logs
 *.log
-
-# IDE
+.env
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 
-# OS
-.DS_Store
-Thumbs.db
+# Next.js build output
+web/.next/

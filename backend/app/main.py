@@ -1,9 +1,11 @@
+import os
 try:
     import truststore
     truststore.inject_into_ssl()
 except ImportError:
     pass
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.profile.api import router as profile_router
 from app.profile.models import UserProfile
@@ -21,6 +23,7 @@ from app.api.autonomous_workflow import router as autonomous_workflow_router
 from app.api.application_feedback import router as application_feedback_router
 from app.api.developer import router as developer_router
 from app.api.self_healing import router as self_healing_router
+from app.api.memory import router as memory_router
 
 from app.memory.database import Base, engine
 
@@ -55,6 +58,18 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# Configure CORS
+cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allowed_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -76,6 +91,7 @@ app.include_router(autonomous_workflow_router)
 app.include_router(application_feedback_router)
 app.include_router(developer_router)
 app.include_router(self_healing_router)
+app.include_router(memory_router)
 
 @app.get("/")
 def root():

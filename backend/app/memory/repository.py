@@ -67,3 +67,12 @@ def get_all_memory(db: Session):
         memory.key: memory.value
         for memory in memories
     }
+
+
+def delete_memory(db: Session, key: str) -> bool:
+    memory = db.query(UserMemory).filter(UserMemory.key == key).first()
+    if memory:
+        db.delete(memory)
+        db.commit()
+        return True
+    return False
