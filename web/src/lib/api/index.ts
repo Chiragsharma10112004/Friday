@@ -61,7 +61,7 @@ export const systemApi = {
 
 export const chatApi = {
   sendMessage: (message: string) =>
-    fetchApi<ChatResponse>("/chat/", {
+    fetchApi<ChatResponse>("/chat", {
       method: "POST",
       body: JSON.stringify({ message }),
     }),

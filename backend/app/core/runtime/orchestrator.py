@@ -7,17 +7,22 @@ def process_tools(message: str, previous_steps: str = ""):
     Execute one tool selected by the planner.
     Returns the execution result and an updated history string.
     """
-
-    plan = decide_tool(
-        user_request=message,
-        previous_steps=previous_steps
-    )
-
-    if not plan.get("use_tool"):
+    try:
+        plan = decide_tool(
+            user_request=message,
+            previous_steps=previous_steps
+        )
+    except Exception:
         return None
 
-    tool_name = plan["tool"]
-    action = plan["action"]
+    if not plan or not isinstance(plan, dict) or not plan.get("use_tool"):
+        return None
+
+    tool_name = plan.get("tool")
+    action = plan.get("action")
+
+    if not tool_name or not action:
+        return None
 
     kwargs = {
         key: value
@@ -29,11 +34,14 @@ def process_tools(message: str, previous_steps: str = ""):
         )
     }
 
-    result = execute_tool(
-        tool_name=tool_name,
-        action=action,
-        **kwargs
-    )
+    try:
+        result = execute_tool(
+            tool_name=tool_name,
+            action=action,
+            **kwargs
+        )
+    except Exception as err:
+        result = f"Tool execution failed: {str(err)}"
 
     history = previous_steps
 

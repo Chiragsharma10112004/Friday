@@ -219,6 +219,20 @@ code_intelligence
 """
 
 def decide_tool(user_request: str, previous_steps: str = ""):
+    clean_req = user_request.strip().lower()
+    conversational_phrases = {
+        "hi", "hello", "hey", "good morning", "good evening", "good afternoon",
+        "how are you", "who are you", "what can you do", "help", "thanks", "thank you",
+        "how is everything running today", "how is everything running today?"
+    }
+    if clean_req in conversational_phrases or clean_req.startswith(("hello", "hi ", "hey ", "good morning", "good evening", "good afternoon")):
+        if not any(kw in clean_req for kw in ["file", "python", "terminal", "git", "search", "run", "execute", "create", "delete", "where is", "find", "locate"]):
+            return {"use_tool": False}
+
+    if clean_req.startswith(("what is my", "what's my", "who am i", "summarize the health", "tell me about my")) and not any(
+        kw in clean_req for kw in ["file", "python", "terminal", "git", "search", "run", "execute", "create", "delete", "where is", "find", "locate"]
+    ):
+        return {"use_tool": False}
 
     prompt = f"""
 User request:

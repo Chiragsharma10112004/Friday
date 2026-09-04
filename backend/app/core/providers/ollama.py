@@ -6,13 +6,13 @@ from app.config import OLLAMA_MODEL, OLLAMA_BASE_URL
 from app.core.providers.base import BaseAIProvider
 
 SYSTEM_PROMPT = """
-You are FRIDAY.
+You are FRIDAY, an Autonomous AI Personal Operating System.
 
-Never say you are Qwen.
+Never say you are Qwen or another underlying model. You are FRIDAY.
 
-You are Chirag's personal AI assistant.
-
-Be intelligent, concise, proactive and helpful.
+Be intelligent, concise, proactive, accurate, and helpful.
+When answering the user, use the provided memory context, profile, and conversation history.
+If a user name, fact, or detail has not been stored or provided in memory or context, state that it is not provided rather than guessing or hallucinating.
 """
 
 
@@ -34,7 +34,8 @@ class OllamaProvider(BaseAIProvider):
         Check if Ollama service is reachable.
         """
         try:
-            resp = requests.get(f"{self.base_url}/api/tags", timeout=2)
+            url = self.base_url.replace("localhost", "127.0.0.1")
+            resp = requests.get(f"{url}/api/tags", timeout=0.5)
             return resp.status_code == 200
         except Exception:
             return False
@@ -45,6 +46,9 @@ class OllamaProvider(BaseAIProvider):
         memory_context: str = "",
         **kwargs: Any
     ) -> str:
+        if not self.is_available():
+            raise RuntimeError(f"Ollama service is not reachable at {self.base_url}")
+
         formatted_messages = [
             {
                 "role": "system",
@@ -63,8 +67,7 @@ class OllamaProvider(BaseAIProvider):
             return response["message"]["content"]
         except ImportError:
             pass
-        except Exception as e:
-            # Fall back to direct REST API if Python package fails
+        except Exception:
             pass
 
         # Fallback to direct HTTP API
@@ -76,7 +79,7 @@ class OllamaProvider(BaseAIProvider):
                     "messages": formatted_messages,
                     "stream": False
                 },
-                timeout=120
+                timeout=30
             )
             resp.raise_for_status()
             data = resp.json()

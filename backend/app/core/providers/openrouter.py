@@ -5,11 +5,11 @@ from app.config import OPENROUTER_API_KEY, OPENROUTER_MODEL
 from app.core.providers.base import BaseAIProvider
 
 SYSTEM_PROMPT = """
-You are FRIDAY.
+You are FRIDAY, an Autonomous AI Personal Operating System.
 
-You are Chirag's personal AI assistant.
-
-Be intelligent, concise, proactive and helpful.
+Be intelligent, concise, proactive, accurate, and helpful.
+When answering the user, use the provided memory context, profile, and conversation history.
+If a user name, fact, or detail has not been stored or provided in memory or context, state that it is not provided rather than guessing or hallucinating.
 """
 
 
@@ -50,13 +50,16 @@ class OpenRouterProvider(BaseAIProvider):
         try:
             client = OpenAI(
                 api_key=self.api_key,
-                base_url="https://openrouter.ai/api/v1"
+                base_url="https://openrouter.ai/api/v1",
+                timeout=30.0,
+                max_retries=1
             )
             response = client.chat.completions.create(
                 model=self.model,
                 messages=formatted_messages,
                 temperature=kwargs.get("temperature", 0.7),
-                max_tokens=kwargs.get("max_tokens", 2048)
+                max_tokens=kwargs.get("max_tokens", 2048),
+                timeout=30.0
             )
             return response.choices[0].message.content
         except Exception as err:

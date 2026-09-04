@@ -6,11 +6,11 @@ from app.config import GEMINI_API_KEY, GEMINI_MODEL
 from app.core.providers.base import BaseAIProvider
 
 SYSTEM_PROMPT = """
-You are FRIDAY.
+You are FRIDAY, an Autonomous AI Personal Operating System.
 
-You are Chirag's personal AI assistant.
-
-Be intelligent, concise, proactive and helpful.
+Be intelligent, concise, proactive, accurate, and helpful.
+When answering the user, use the provided memory context, profile, and conversation history.
+If a user name, fact, or detail has not been stored or provided in memory or context, state that it is not provided rather than guessing or hallucinating.
 """
 
 
@@ -105,7 +105,7 @@ class GeminiProvider(BaseAIProvider):
                 url,
                 json=payload,
                 headers={"Content-Type": "application/json"},
-                timeout=60
+                timeout=10
             )
             
             if resp.status_code != 200:

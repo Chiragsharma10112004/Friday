@@ -40,6 +40,13 @@ export default function MemoryPage() {
 
       if (memRes.status === "fulfilled") setMemories(memRes.value.memories || {});
       if (histRes.status === "fulfilled") setHistory(histRes.value || []);
+      if (memRes.status === "fulfilled" && memRes.value) {
+        const val: any = memRes.value;
+        setMemories(val.memories || (typeof val === "object" && !Array.isArray(val) ? val : {}));
+      }
+      if (histRes.status === "fulfilled" && histRes.value) {
+        setHistory(Array.isArray(histRes.value) ? histRes.value : []);
+      }
     } finally {
       setLoading(false);
     }

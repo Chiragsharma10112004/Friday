@@ -11,6 +11,7 @@ import tests.test_phase7_career_intelligence as t7_ci
 import tests.test_phase7_autonomous_workflow as t7_wf
 import tests.test_phase8_application_feedback as t8
 import tests.test_phase9_self_healing as t9
+import tests.test_phase10_memory_api as t10
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -28,6 +29,7 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(t7_wf))
     suite.addTests(loader.loadTestsFromModule(t8))
     suite.addTests(loader.loadTestsFromModule(t9))
+    suite.addTests(loader.loadTestsFromModule(t10))
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
