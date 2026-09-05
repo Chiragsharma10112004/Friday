@@ -16,3 +16,6 @@ Thumbs.db
 
 # Next.js build output
 web/.next/
+
+# TypeScript build cache
+*.tsbuildinfo
