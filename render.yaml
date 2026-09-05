@@ -1,0 +1,38 @@
+# ==============================================================================
+# FRIDAY - Render Blueprint Specification (Infrastructure as Code)
+# ==============================================================================
+# Deploy to Render by connecting your GitHub repository and selecting "Blueprint".
+# Documentation: https://render.com/docs/blueprint-spec
+# ==============================================================================
+
+services:
+  - type: web
+    name: friday-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health/readiness
+    envVars:
+      - key: APP_NAME
+        value: FRIDAY
+      - key: VERSION
+        value: 0.1.0
+      - key: ENV
+        value: production
+      - key: DEFAULT_AI_PROVIDER
+        value: openrouter
+      - key: JOB_ANALYSIS_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_MODEL
+        value: meta-llama/llama-3.3-70b-instruct:free
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
