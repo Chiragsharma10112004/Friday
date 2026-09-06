@@ -131,3 +131,8 @@ docker compose up --build
 ## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+## Production Readiness
+
+FRIDAY is built with a reliability-first architecture, including automated testing, health diagnostics, failure handling, persistent state, and controlled external actions. The frontend is deployed through Vercel, with the FastAPI backend prepared for Docker-based production deployment.
+
