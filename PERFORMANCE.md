@@ -1,22 +1,12 @@
-# FRIDAY Performance Investigation
+## Production Performance Notes
 
-## Status
-Initial performance investigation completed.
+FRIDAY is designed to avoid unnecessary LLM/tool execution for simple conversational requests.
 
-## Scope
-Measured the normal conversational chat path to identify latency from:
-- Tool planning and execution
-- Memory processing
-- Application context loading
-- LLM inference
-- Provider fallback/retries
+Current optimization priorities:
+- Skip heavy planning for simple conversational queries
+- Reduce unnecessary provider calls
+- Keep provider timeouts bounded
+- Preserve deterministic behavior for memory and application queries
+- Validate performance changes with regression tests before deployment
 
-## Safety
-No production behavior was changed during this investigation.
-
-## Baseline
-The repository remains at the verified Phase 10 checkpoint:
-6e65a14
-
-## Next Step
-Implement only the smallest optimization supported by the measured latency results, followed by regression testing.
+Performance improvements will be measured against real production behavior after deployment.
