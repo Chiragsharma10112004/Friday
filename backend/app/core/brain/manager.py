@@ -20,23 +20,54 @@ _PROVIDERS: Dict[str, BaseAIProvider] = {
 }
 
 
+def resolve_best_provider_name(provider_name: Optional[str] = None, task: Optional[str] = None) -> str:
+    """
+    Intelligently select the best AI provider name based on explicit request,
+    task configuration, environment (dev vs prod), and configured API keys.
+    """
+    from app.config import (
+        DEFAULT_AI_PROVIDER,
+        JOB_ANALYSIS_PROVIDER,
+        OPENROUTER_API_KEY,
+        GEMINI_API_KEY,
+    )
+
+    if provider_name:
+        req = provider_name.lower().strip()
+        if req in _PROVIDERS:
+            return req
+
+    if task == "job_analysis" and JOB_ANALYSIS_PROVIDER:
+        job_prov = JOB_ANALYSIS_PROVIDER.lower().strip()
+        if job_prov in _PROVIDERS and _PROVIDERS[job_prov].is_available():
+            return job_prov
+
+    configured_default = (DEFAULT_AI_PROVIDER or "ollama").lower().strip()
+
+    # If the user explicitly configured openrouter or gemini, and key is available
+    if configured_default in ("openrouter", "gemini") and _PROVIDERS[configured_default].is_available():
+        return configured_default
+
+    # In production or when default provider is offline:
+    # Automatically route to configured cloud providers
+    if OPENROUTER_API_KEY and OPENROUTER_API_KEY.strip():
+        return "openrouter"
+    if GEMINI_API_KEY and GEMINI_API_KEY.strip():
+        return "gemini"
+
+    # In local development, try configured default (e.g. ollama)
+    if configured_default in _PROVIDERS and _PROVIDERS[configured_default].is_available():
+        return configured_default
+
+    return configured_default if configured_default in _PROVIDERS else "ollama"
+
+
 def get_provider(provider_name: Optional[str] = None, task: Optional[str] = None) -> BaseAIProvider:
     """
     Resolve the AI provider to use based on requested name, task, or configuration.
     """
-    if provider_name:
-        selected_name = provider_name.lower().strip()
-    elif task == "job_analysis":
-        selected_name = JOB_ANALYSIS_PROVIDER.lower().strip()
-    else:
-        selected_name = DEFAULT_AI_PROVIDER.lower().strip()
-
-    provider = _PROVIDERS.get(selected_name)
-    if provider:
-        return provider
-
-    # Fallback to default or ollama
-    return _PROVIDERS.get(DEFAULT_AI_PROVIDER, _PROVIDERS["ollama"])
+    selected_name = resolve_best_provider_name(provider_name=provider_name, task=task)
+    return _PROVIDERS.get(selected_name, _PROVIDERS["ollama"])
 
 
 def process_message(
@@ -75,14 +106,16 @@ def process_message(
             task or "general"
         )
 
-    # Fallback chain: try other available providers
+    # Fallback chain: prioritize cloud providers first, then local development
+    fallback_order = ["openrouter", "gemini", "ollama"]
     fallback_candidates = [
-        name for name, prov in _PROVIDERS.items()
-        if name != primary_name and prov.is_available()
+        name for name in fallback_order
+        if name != primary_name and name in _PROVIDERS and _PROVIDERS[name].is_available()
     ]
 
-    # Ensure local ollama is always in the candidate list as the ultimate fallback
-    if "ollama" not in fallback_candidates and primary_name != "ollama":
+    # In local development only, if no available fallback candidates found, try ollama
+    from app.config import ENV
+    if ENV != "production" and not fallback_candidates and primary_name != "ollama":
         fallback_candidates.append("ollama")
 
     for fallback_name in fallback_candidates:

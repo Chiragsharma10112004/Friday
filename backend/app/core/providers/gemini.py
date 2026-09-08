@@ -20,8 +20,18 @@ class GeminiProvider(BaseAIProvider):
     """
 
     def __init__(self, api_key: str = None, model: str = None):
-        self.api_key = api_key or GEMINI_API_KEY
-        self.model = model or GEMINI_MODEL
+        self._api_key = api_key
+        self._model = model
+
+    @property
+    def api_key(self) -> str:
+        from app.config import GEMINI_API_KEY
+        return self._api_key or GEMINI_API_KEY or ""
+
+    @property
+    def model(self) -> str:
+        from app.config import GEMINI_MODEL
+        return self._model or GEMINI_MODEL or "gemini-2.5-flash"
 
     @property
     def provider_name(self) -> str:

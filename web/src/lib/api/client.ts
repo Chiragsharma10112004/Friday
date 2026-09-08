@@ -23,11 +23,16 @@ export async function fetchApi<T>(
     ...(options.headers || {}),
   };
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+
   try {
     const response = await fetch(url, {
       ...options,
       headers,
+      signal: options.signal || controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       let errorData;
@@ -51,8 +56,16 @@ export async function fetchApi<T>(
 
     return (await response.json()) as T;
   } catch (error: any) {
+    clearTimeout(timeoutId);
     if (error instanceof ApiError) {
       throw error;
+    }
+    if (error?.name === "AbortError") {
+      throw new ApiError(
+        408,
+        "Request timed out. The backend server may be waking up from sleep.",
+        error
+      );
     }
     throw new ApiError(
       0,

@@ -22,8 +22,18 @@ class OllamaProvider(BaseAIProvider):
     """
 
     def __init__(self, model: str = None, base_url: str = None):
-        self.model = model or OLLAMA_MODEL
-        self.base_url = (base_url or OLLAMA_BASE_URL).rstrip("/")
+        self._model = model
+        self._base_url = base_url
+
+    @property
+    def model(self) -> str:
+        from app.config import OLLAMA_MODEL
+        return self._model or OLLAMA_MODEL or "qwen2.5:7b"
+
+    @property
+    def base_url(self) -> str:
+        from app.config import OLLAMA_BASE_URL
+        return (self._base_url or OLLAMA_BASE_URL or "http://localhost:11434").rstrip("/")
 
     @property
     def provider_name(self) -> str:
@@ -32,7 +42,11 @@ class OllamaProvider(BaseAIProvider):
     def is_available(self) -> bool:
         """
         Check if Ollama service is reachable.
+        In production, Ollama is disabled to prevent cloud container socket hangs.
         """
+        from app.config import ENV
+        if ENV == "production":
+            return False
         try:
             url = self.base_url.replace("localhost", "127.0.0.1")
             resp = requests.get(f"{url}/api/tags", timeout=0.5)

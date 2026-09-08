@@ -59,8 +59,11 @@ app = FastAPI(
 )
 
 # Configure CORS
-cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+DEFAULT_CORS_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,https://friday-ai-eosin.vercel.app"
+cors_origins_str = os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS)
 allowed_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+if "https://friday-ai-eosin.vercel.app" not in allowed_origins:
+    allowed_origins.append("https://friday-ai-eosin.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,

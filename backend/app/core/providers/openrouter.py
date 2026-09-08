@@ -19,8 +19,18 @@ class OpenRouterProvider(BaseAIProvider):
     """
 
     def __init__(self, api_key: str = None, model: str = None):
-        self.api_key = api_key or OPENROUTER_API_KEY
-        self.model = model or OPENROUTER_MODEL
+        self._api_key = api_key
+        self._model = model
+
+    @property
+    def api_key(self) -> str:
+        from app.config import OPENROUTER_API_KEY
+        return self._api_key or OPENROUTER_API_KEY or ""
+
+    @property
+    def model(self) -> str:
+        from app.config import OPENROUTER_MODEL
+        return self._model or OPENROUTER_MODEL or "meta-llama/llama-3.3-70b-instruct:free"
 
     @property
     def provider_name(self) -> str:
