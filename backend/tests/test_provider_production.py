@@ -83,7 +83,55 @@ class ProductionProviderTests(unittest.TestCase):
                     # Ensure raw secrets are NEVER leaked in response JSON
                     self.assertNotIn("test-secret-key", str(data))
 
+    def test_07_provider_failure_produces_safe_diagnostics_without_leaking_key(self):
+        secret_key = "sk-or-v1-secret-token-998877"
+        with patch("app.config.OPENROUTER_API_KEY", secret_key):
+            with patch("app.config.ENV", "production"):
+                prov = OpenRouterProvider()
+
+                # Mock OpenAI client raising an API error containing the secret key
+                mock_err = Exception(f"OpenRouter 402 Payment Required: insufficient credits. Key={secret_key}")
+                mock_err.status_code = 402
+
+                with patch("app.core.providers.openrouter.OpenAI") as mock_openai:
+                    mock_instance = MagicMock()
+                    mock_instance.chat.completions.create.side_effect = mock_err
+                    mock_openai.return_value = mock_instance
+
+                    with self.assertLogs("friday.brain", level="WARNING") as captured_brain_logs:
+                        with self.assertRaises(RuntimeError):
+                            process_message(
+                                messages=[{"role": "user", "content": "Hello"}],
+                                preferred_provider="openrouter",
+                                task="general"
+                            )
+
+                    combined_logs = " ".join(captured_brain_logs.output)
+                    # Verify diagnostic details are captured
+                    self.assertIn("openrouter", combined_logs)
+                    self.assertIn("status=402", combined_logs)
+                    self.assertIn("model=", combined_logs)
+                    self.assertIn("insufficient credits", combined_logs)
+                    # Verify key is strictly redacted and NEVER leaked
+                    self.assertNotIn(secret_key, combined_logs)
+                    self.assertIn("[REDACTED_KEY]", combined_logs)
+
+    def test_08_public_chat_does_not_expose_diagnostics_on_provider_failure(self):
+        secret_key = "sk-or-v1-super-secret-key-123"
+        with patch("app.config.OPENROUTER_API_KEY", secret_key):
+            with patch("app.config.ENV", "production"):
+                with patch.object(OpenRouterProvider, "generate", side_effect=RuntimeError(f"Internal 500 error with key {secret_key}")):
+                    response = self.client.post("/chat", json={"message": "Hello FRIDAY"})
+                    self.assertEqual(response.status_code, 200)
+                    reply = response.json().get("reply", "")
+                    # Response should be a safe fallback and never leak internal error or secret
+                    self.assertNotIn(secret_key, reply)
+                    self.assertNotIn("RuntimeError", reply)
+                    self.assertNotIn("500", reply)
+                    self.assertIn("standing by", reply)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

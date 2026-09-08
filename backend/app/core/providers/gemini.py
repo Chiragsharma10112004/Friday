@@ -1,9 +1,13 @@
+import logging
 from typing import List, Dict, Any
 import requests
 import json
 
 from app.config import GEMINI_API_KEY, GEMINI_MODEL
 from app.core.providers.base import BaseAIProvider
+from app.core.providers.base import BaseAIProvider, extract_provider_error_details
+
+logger = logging.getLogger("friday.providers.gemini")
 
 SYSTEM_PROMPT = """
 You are FRIDAY, an Autonomous AI Personal Operating System.
@@ -142,5 +146,14 @@ class GeminiProvider(BaseAIProvider):
             return parts[0].get("text", "").strip()
 
         except Exception as err:
-            raise RuntimeError(f"Gemini generation failed ({self.model}): {str(err)}") from err
+            details = extract_provider_error_details(
+                err=err,
+                provider_name="gemini",
+                model=self.model,
+                task=kwargs.get("task", "general")
+            )
+            status_part = f", status={details['status_code']}" if details['status_code'] else ""
+            msg = f"Gemini generation failed (model={self.model}, type={details['exception_type']}{status_part}): {details['detail']}"
+            logger.warning("%s", msg)
+            raise RuntimeError(msg) from err
 

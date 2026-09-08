@@ -2,6 +2,7 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from app.core.providers.base import BaseAIProvider
+from app.core.providers.base import BaseAIProvider, extract_provider_error_details
 from app.core.providers.ollama import OllamaProvider
 from app.core.providers.gemini import GeminiProvider
 from app.core.providers.openrouter import OpenRouterProvider
@@ -108,14 +109,26 @@ def process_message(
             return primary_provider.generate(
                 messages=messages,
                 memory_context=memory_context,
+                task=task,
                 **kwargs,
             )
         except Exception as err:
+            details = extract_provider_error_details(
+                err=err,
+                provider_name=primary_name,
+                model=getattr(primary_provider, "model", None),
+                task=task or "general",
+            )
+            status_info = f", status={details['status_code']}" if details['status_code'] else ""
+            model_info = f", model={details['model']}" if details['model'] else ""
             logger.warning(
-                "Primary AI provider '%s' failed for task '%s': %s. Attempting fallback.",
+                "Primary AI provider '%s' failed for task '%s' (type=%s%s%s): %s. Attempting fallback.",
                 primary_name,
                 task or "general",
-                type(err).__name__,
+                details["exception_type"],
+                model_info,
+                status_info,
+                details["detail"],
             )
     else:
         logger.info(
@@ -152,13 +165,26 @@ def process_message(
             return fallback_provider.generate(
                 messages=messages,
                 memory_context=memory_context,
+                task=task,
                 **kwargs,
             )
         except Exception as fallback_err:
+            fb_details = extract_provider_error_details(
+                err=fallback_err,
+                provider_name=fallback_name,
+                model=getattr(fallback_provider, "model", None),
+                task=task or "general",
+            )
+            fb_status_info = f", status={fb_details['status_code']}" if fb_details['status_code'] else ""
+            fb_model_info = f", model={fb_details['model']}" if fb_details['model'] else ""
             logger.warning(
-                "Fallback provider '%s' failed: %s",
+                "Fallback provider '%s' failed for task '%s' (type=%s%s%s): %s",
                 fallback_name,
-                type(fallback_err).__name__,
+                task or "general",
+                fb_details["exception_type"],
+                fb_model_info,
+                fb_status_info,
+                fb_details["detail"],
             )
 
     raise RuntimeError(
@@ -166,3 +192,4 @@ def process_message(
         f"{', '.join(fallback_candidates)}) failed to generate a response "
         f"for task '{task or 'general'}'."
     )
+

@@ -1,8 +1,12 @@
+import logging
 from typing import List, Dict, Any
 from openai import OpenAI
 
 from app.config import OPENROUTER_API_KEY, OPENROUTER_MODEL
 from app.core.providers.base import BaseAIProvider
+from app.core.providers.base import BaseAIProvider, extract_provider_error_details
+
+logger = logging.getLogger("friday.providers.openrouter")
 
 SYSTEM_PROMPT = """
 You are FRIDAY, an Autonomous AI Personal Operating System.
@@ -75,7 +79,16 @@ class OpenRouterProvider(BaseAIProvider):
             )
             return response.choices[0].message.content
         except Exception as err:
-            raise RuntimeError(f"OpenRouter generation failed ({self.model}): {str(err)}") from err
+            details = extract_provider_error_details(
+                err=err,
+                provider_name="openrouter",
+                model=self.model,
+                task=kwargs.get("task", "general")
+            )
+            status_part = f", status={details['status_code']}" if details['status_code'] else ""
+            msg = f"OpenRouter generation failed (model={self.model}, type={details['exception_type']}{status_part}): {details['detail']}"
+            logger.warning("%s", msg)
+            raise RuntimeError(msg) from err
 
 
 # Backward compatibility wrapper
