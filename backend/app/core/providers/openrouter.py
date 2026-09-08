@@ -21,6 +21,8 @@ class OpenRouterProvider(BaseAIProvider):
     def __init__(self, api_key: str = None, model: str = None):
         self._api_key = api_key
         self._model = model
+        self._api_key = api_key
+        self._model = model
 
     @property
     def api_key(self) -> str:

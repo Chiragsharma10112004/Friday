@@ -1,6 +1,8 @@
+import os
 import re
 import time
 import subprocess
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from app.core.code_intelligence.schemas import TestRunReport, TestCaseResult
@@ -35,6 +37,12 @@ class SafeTestRunner:
             )
 
         start_time = time.time()
+        backend_dir = Path(__file__).resolve().parent.parent.parent.parent
+        env = os.environ.copy()
+        current_pythonpath = env.get("PYTHONPATH", "")
+        backend_str = str(backend_dir)
+        env["PYTHONPATH"] = f"{backend_str}{os.pathsep}{current_pythonpath}" if current_pythonpath else backend_str
+
         try:
             res = subprocess.run(
                 cmd,
@@ -42,6 +50,8 @@ class SafeTestRunner:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                cwd=str(backend_dir),
+                env=env,
             )
             duration = round(time.time() - start_time, 3)
             raw = (res.stdout or "") + "\n" + (res.stderr or "")

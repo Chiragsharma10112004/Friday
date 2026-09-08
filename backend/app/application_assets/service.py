@@ -58,14 +58,22 @@ class AssetGenerationService:
         app_id = request.application_id
         analysis_context = None
 
-        # 1. From database JobApplication
+        # 1. From database JobApplication or TrackedApplication
         if app_id:
             db_app = db.query(JobApplication).filter(JobApplication.id == app_id).first()
-            if not db_app:
-                raise ValueError(f"Job application with ID {app_id} not found in database.")
-            job_desc = job_desc or db_app.job_description
-            company = company or db_app.company
-            role = role or db_app.role
+            if db_app:
+                job_desc = job_desc or db_app.job_description
+                company = company or db_app.company
+                role = role or db_app.role
+            else:
+                from app.application_pipeline.models import TrackedApplication
+                tracked_app = db.query(TrackedApplication).filter(TrackedApplication.id == app_id).first()
+                if tracked_app:
+                    job_desc = job_desc or tracked_app.job_description
+                    company = company or tracked_app.company
+                    role = role or tracked_app.role
+                else:
+                    raise ValueError(f"Job application with ID {app_id} not found in database.")
 
         # 2. From Phase 2 NormalizedJobPosting
         elif request.normalized_job:

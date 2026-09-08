@@ -59,3 +59,19 @@ def health_diagnostics():
         "total_self_healing_events": len(history),
         "recent_recovery_events": [h.dict() for h in history[:5]],
     }
+
+
+@router.get("/health/provider-diagnostics")
+def provider_diagnostics():
+    from app.config import ENV, GEMINI_API_KEY, OPENROUTER_API_KEY
+    from app.core.brain.manager import resolve_best_provider_name, get_provider
+    selected_name = resolve_best_provider_name()
+    provider = get_provider()
+    return {
+        "environment": ENV,
+        "selected_provider": selected_name,
+        "provider_available": provider.is_available(),
+        "gemini_configured": bool(GEMINI_API_KEY and GEMINI_API_KEY.strip()),
+        "openrouter_configured": bool(OPENROUTER_API_KEY and OPENROUTER_API_KEY.strip()),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }

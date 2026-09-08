@@ -1,5 +1,11 @@
 import unittest
 import sys
+from pathlib import Path
+
+# Ensure backend directory is in sys.path when invoked from any working directory
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 import tests.test_phase1_validation as t1
 import tests.test_phase2_ingestion as t2
@@ -12,6 +18,7 @@ import tests.test_phase7_autonomous_workflow as t7_wf
 import tests.test_phase8_application_feedback as t8
 import tests.test_phase9_self_healing as t9
 import tests.test_phase10_memory_api as t10
+import tests.test_provider_production as t_prod
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -30,6 +37,7 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(t8))
     suite.addTests(loader.loadTestsFromModule(t9))
     suite.addTests(loader.loadTestsFromModule(t10))
+    suite.addTests(loader.loadTestsFromModule(t_prod))
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)

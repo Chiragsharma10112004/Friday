@@ -68,6 +68,22 @@ class ProductionProviderTests(unittest.TestCase):
             "https://friday-ai-eosin.vercel.app"
         )
 
+    def test_06_provider_diagnostics_endpoint_safe_boolean_flags(self):
+        with patch("app.config.ENV", "production"):
+            with patch("app.config.GEMINI_API_KEY", "test-secret-key"):
+                with patch("app.config.OPENROUTER_API_KEY", ""):
+                    response = self.client.get("/health/provider-diagnostics")
+                    self.assertEqual(response.status_code, 200)
+                    data = response.json()
+                    self.assertEqual(data["environment"], "production")
+                    self.assertEqual(data["selected_provider"], "gemini")
+                    self.assertTrue(data["provider_available"])
+                    self.assertTrue(data["gemini_configured"])
+                    self.assertFalse(data["openrouter_configured"])
+                    # Ensure raw secrets are NEVER leaked in response JSON
+                    self.assertNotIn("test-secret-key", str(data))
+
 
 if __name__ == "__main__":
     unittest.main()
+

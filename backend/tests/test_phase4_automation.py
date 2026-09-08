@@ -60,6 +60,15 @@ class Phase4AutomationTests(unittest.TestCase):
             cls.db.add(profile)
             cls.db.commit()
             cls.db.refresh(profile)
+        else:
+            if not profile.email:
+                profile.email = "chirag@example.com"
+                profile.phone = profile.phone or "+1-555-0199"
+                profile.location = profile.location or "San Francisco, CA"
+                profile.work_authorization = profile.work_authorization or "Authorized to work in US/India"
+                profile.sponsorship_required = profile.sponsorship_required or "No"
+                cls.db.commit()
+                cls.db.refresh(profile)
         cls.profile = profile
 
         job_app = cls.db.query(JobApplication).filter(JobApplication.company == "AutomationCorp").first()

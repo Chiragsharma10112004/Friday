@@ -34,6 +34,12 @@ class Phase3ApplicationAssetsTests(unittest.TestCase):
             profile = UserProfile(
                 first_name="Chirag",
                 last_name="Sharma",
+                email="chirag@example.com",
+                phone="+1-555-0199",
+                location="San Francisco, CA",
+                linkedin_url="https://linkedin.com/in/chiragsharma",
+                github_url="https://github.com/chiragsharma",
+                portfolio_url="https://chiragsharma.dev",
                 headline="Senior AI Backend Engineer",
                 summary="Experienced backend engineer specializing in Python, FastAPI, and GenAI applications.",
                 university="GITAM University",
@@ -47,6 +53,13 @@ class Phase3ApplicationAssetsTests(unittest.TestCase):
             cls.db.add(profile)
             cls.db.commit()
             cls.db.refresh(profile)
+        else:
+            if not profile.email:
+                profile.email = "chirag@example.com"
+                profile.phone = profile.phone or "+1-555-0199"
+                profile.location = profile.location or "San Francisco, CA"
+                cls.db.commit()
+                cls.db.refresh(profile)
         cls.profile = profile
 
         # Create a sample JobApplication in DB for application_id tests

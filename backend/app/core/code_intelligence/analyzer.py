@@ -64,8 +64,24 @@ class CodeAnalyzer:
             return None
 
     @classmethod
+    def _resolve_root(cls, root: str = ".") -> Path:
+        p = Path(root)
+        if p.is_absolute() and p.exists():
+            return p
+        if p.exists():
+            return p.resolve()
+        backend_p = Path("backend") / root
+        if backend_p.exists():
+            return backend_p.resolve()
+        base_backend = Path(__file__).resolve().parent.parent.parent.parent
+        if (base_backend / root).exists():
+            return (base_backend / root).resolve()
+        return p.resolve()
+
+    @classmethod
     def analyze_workspace(cls, root: str = ".") -> WorkspaceMap:
         root_path = Path(root).resolve()
+        root_path = cls._resolve_root(root)
         files: List[FileInspection] = []
         symbol_index: Dict[str, List[str]] = defaultdict(list)
         total_lines = 0
@@ -95,6 +111,7 @@ class CodeAnalyzer:
     @classmethod
     def lookup_symbol(cls, symbol_name: str, root: str = ".") -> List[SymbolDefinition]:
         root_path = Path(root).resolve()
+        root_path = cls._resolve_root(root)
         results: List[SymbolDefinition] = []
 
         for file in root_path.rglob("*.py"):

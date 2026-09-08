@@ -24,6 +24,8 @@ class OllamaProvider(BaseAIProvider):
     def __init__(self, model: str = None, base_url: str = None):
         self._model = model
         self._base_url = base_url
+        self._model = model
+        self._base_url = base_url
 
     @property
     def model(self) -> str:

@@ -160,6 +160,10 @@ class Phase10MemoryApiTests(unittest.TestCase):
             )
             self.db.add(profile)
             self.db.commit()
+        else:
+            if not profile.email:
+                profile.email = "chirag@example.com"
+                self.db.commit()
 
         # Build context
         ctx = build_memory_context(self.db)
