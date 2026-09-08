@@ -19,6 +19,7 @@ import tests.test_phase8_application_feedback as t8
 import tests.test_phase9_self_healing as t9
 import tests.test_phase10_memory_api as t10
 import tests.test_provider_production as t_prod
+import tests.test_tool_routing as t_routing
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
@@ -38,6 +39,8 @@ if __name__ == "__main__":
     suite.addTests(loader.loadTestsFromModule(t9))
     suite.addTests(loader.loadTestsFromModule(t10))
     suite.addTests(loader.loadTestsFromModule(t_prod))
+    suite.addTests(loader.loadTestsFromModule(t_routing))
+
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
