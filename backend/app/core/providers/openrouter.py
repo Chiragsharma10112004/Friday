@@ -36,7 +36,7 @@ class OpenRouterProvider(BaseAIProvider):
     @property
     def model(self) -> str:
         from app.config import OPENROUTER_MODEL
-        return self._model or OPENROUTER_MODEL or "meta-llama/llama-3.3-70b-instruct:free"
+        return self._model or OPENROUTER_MODEL or "meta-llama/llama-3.3-70b-instruct"
 
     @property
     def provider_name(self) -> str:

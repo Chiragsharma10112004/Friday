@@ -130,6 +130,12 @@ class ProductionProviderTests(unittest.TestCase):
                     self.assertNotIn("500", reply)
                     self.assertIn("standing by", reply)
 
+    def test_09_openrouter_default_model_slug(self):
+        with patch("app.config.OPENROUTER_MODEL", ""):
+            prov = OpenRouterProvider()
+            self.assertEqual(prov.model, "meta-llama/llama-3.3-70b-instruct")
+            self.assertNotIn(":free", prov.model)
+
 
 if __name__ == "__main__":
     unittest.main()

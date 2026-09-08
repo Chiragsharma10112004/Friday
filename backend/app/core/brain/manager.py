@@ -1,7 +1,6 @@
 import logging
 from typing import List, Dict, Any, Optional
 
-from app.core.providers.base import BaseAIProvider
 from app.core.providers.base import BaseAIProvider, extract_provider_error_details
 from app.core.providers.ollama import OllamaProvider
 from app.core.providers.gemini import GeminiProvider
@@ -182,7 +181,7 @@ def process_message(
                 fallback_name,
                 task or "general",
                 fb_details["exception_type"],
-                fb_model_info,
+                fb_model_part if (fb_model_part := fb_model_info) else "",
                 fb_status_info,
                 fb_details["detail"],
             )
