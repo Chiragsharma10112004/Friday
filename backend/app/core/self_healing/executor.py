@@ -58,6 +58,7 @@ class RemediationExecutor:
         current_code = proposal.proposed_code
         attempts = 0
         diff_applied = proposal.diff_preview
+        validation_output = ""
 
         while attempts <= max_retries:
             attempts += 1

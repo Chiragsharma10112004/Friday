@@ -2,11 +2,18 @@
 Unit tests for production provider routing, intelligent fallbacks, and CORS headers.
 """
 import unittest
+import sys
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
 from app.main import app
 from app.core.brain.manager import resolve_best_provider_name, get_provider, process_message
+
 from app.core.providers.ollama import OllamaProvider
 from app.core.providers.gemini import GeminiProvider
 from app.core.providers.openrouter import OpenRouterProvider
