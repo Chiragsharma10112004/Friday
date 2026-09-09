@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import "./globals.css";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { Topbar } from "@/components/shell/Topbar";
@@ -12,6 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const pathname = usePathname();
+  const isCinematicHome = pathname === "/";
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -20,34 +23,47 @@ export default function RootLayout({
         setIsCommandPaletteOpen((prev) => !prev);
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   return (
     <html lang="en" className="dark">
       <head>
-        <title>FRIDAY — Autonomous AI Personal Operating System</title>
+        <title>FRIDAY — Your Software Engineering Partner</title>
         <meta
           name="description"
-          content="FRIDAY Autonomous AI Personal Operating System — Intelligence, Code Editing, Self-Healing, and Career Workflows"
+          content="FRIDAY — an AI-powered software engineering partner for understanding, investigating, repairing, and verifying code."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
+
       <body className="bg-background text-slate-100 min-h-screen antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
-        <div className="flex min-h-screen">
-          <Sidebar />
-
-          <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-            <Topbar
-              onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
-            />
-
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-              {children}
-            </main>
+        {isCinematicHome ? (
+          <div className="min-h-screen bg-black overflow-x-hidden">
+            {children}
           </div>
-        </div>
+        ) : (
+          <div className="flex min-h-screen bg-background">
+            <Sidebar />
+
+            <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+              <Topbar
+                onOpenCommandPalette={() =>
+                  setIsCommandPaletteOpen(true)
+                }
+              />
+
+              <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+                {children}
+              </main>
+            </div>
+          </div>
+        )}
 
         <CommandPalette
           isOpen={isCommandPaletteOpen}
