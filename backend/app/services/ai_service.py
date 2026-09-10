@@ -1,4 +1,5 @@
 import logging
+from typing import Tuple, List, Optional
 from app.core.brain.manager import process_message
 
 from app.core.runtime.orchestrator import process_tools
@@ -19,7 +20,56 @@ logger = logging.getLogger("friday.chat")
 MAX_AGENT_STEPS = 10
 
 
-def generate_response(message: str) -> str:
+def _detect_truthful_context_sources(message: str, reply: str, memory_context: str) -> Optional[List[str]]:
+    """
+    Truthfully identify which context sources actually participated in constructing
+    the assistant's response. Never claim a context source was used merely because
+    it was present in the system database.
+    """
+    if not memory_context:
+        return None
+
+    sources = []
+    msg_lower = message.lower()
+    reply_lower = reply.lower()
+    combined_text = f"{msg_lower} {reply_lower}"
+
+    # 1. User Profile
+    if "User Profile:" in memory_context:
+        profile_triggers = (
+            "profile", "skills", "skill", "resume", "target role", "target_roles",
+            "experience", "university", "degree", "education", "who am i", "my name",
+            "where do i live", "my location", "career preference", "career goals"
+        )
+        if any(trigger in combined_text for trigger in profile_triggers):
+            sources.append("User Profile")
+
+    # 2. Stored Memory
+    if "Known facts about the user:" in memory_context:
+        memory_triggers = (
+            "memory", "remember", "stored fact", "facts about me", "favorite",
+            "favorite language", "favorite_language", "preference"
+        )
+        if any(trigger in combined_text for trigger in memory_triggers):
+            if "Stored Memory" not in sources:
+                sources.append("Stored Memory")
+
+    # 3. Active Applications Pipeline
+    if "Active Job Application & Career Pipeline Status:" in memory_context:
+        pipeline_triggers = (
+            "application", "applications", "interview", "interviews", "pipeline",
+            "health status", "job status", "applied", "offer", "rejection", "stale"
+        )
+        if any(trigger in combined_text for trigger in pipeline_triggers):
+            sources.append("Application Pipeline")
+
+    return sources if sources else None
+
+
+def generate_response_detailed(message: str) -> Tuple[str, Optional[List[str]]]:
+    """
+    Generate response and return both the text reply and truthful context sources used.
+    """
     db = SessionLocal()
     try:
         # 1. Record incoming user message immediately
@@ -59,8 +109,9 @@ def generate_response(message: str) -> str:
                 logger.debug("Tool response generation error: %s", e)
                 reply = f"Executed {final_tool_output.get('plan', {}).get('tool')}: {final_tool_output.get('result')}"
 
+            tool_name = final_tool_output.get("plan", {}).get("tool", "tool")
             save_message(db, "assistant", reply)
-            return reply
+            return reply, [f"Local Tool: {tool_name}"]
 
         # 5. Normal Conversation with History & Memory
         history = get_recent_messages(db)
@@ -105,8 +156,17 @@ def generate_response(message: str) -> str:
             else:
                 reply = "I am standing by. (Note: AI model provider is currently offline or unreachable, but your message and context are saved.)"
 
+        context_sources = _detect_truthful_context_sources(message, reply, memory_context)
         save_message(db, "assistant", reply)
-        return reply
+        return reply, context_sources
 
     finally:
         db.close()
+
+
+def generate_response(message: str) -> str:
+    """
+    Standard generation function returning string (preserves 100% backward compatibility).
+    """
+    reply, _ = generate_response_detailed(message)
+    return reply

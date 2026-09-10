@@ -38,6 +38,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   reply: string;
+  context_sources?: string[];
 }
 
 export interface ChatMessage {
@@ -45,6 +46,7 @@ export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
+  context_sources?: string[];
   toolsUsed?: string[];
   status?: "pending" | "streaming" | "complete" | "error";
 }

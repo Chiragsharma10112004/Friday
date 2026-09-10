@@ -26,10 +26,15 @@ IGNORE_DIRS = {
 }
 
 
-def find_text(text: str, root: str = "."):
+def find_text(text: str = None, root: str = ".", query: str = None):
     """
     Search all supported source files in the project for a given text.
     """
+    if text is None and query is not None:
+        text = query
+
+    if not text:
+        return []
 
     matches = []
 

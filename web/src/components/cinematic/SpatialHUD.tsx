@@ -5,15 +5,9 @@ import Link from "next/link";
 import {
   Volume2,
   VolumeX,
-  Sparkles,
   ArrowRight,
-  Terminal,
-  ShieldCheck,
   Cpu,
   Layers,
-  Activity,
-  CheckCircle2,
-  Code2,
 } from "lucide-react";
 import { fridayAudio } from "./FridayAudio";
 
@@ -25,14 +19,12 @@ interface SpatialHUDProps {
 
 export function SpatialHUD({ scrollProgress, hoveredNode, onJumpToScene }: SpatialHUDProps) {
   const [isMuted, setIsMuted] = useState(true);
-  const [hasInteracted, setHasInteracted] = useState(false);
 
   useEffect(() => {
     setIsMuted(fridayAudio.getMuted());
   }, []);
 
   const handleSoundToggle = () => {
-    setHasInteracted(true);
     const muted = fridayAudio.toggleMute();
     setIsMuted(muted);
   };
@@ -168,14 +160,23 @@ export function SpatialHUD({ scrollProgress, hoveredNode, onJumpToScene }: Spati
             Your autonomous software-engineering partner.
           </p>
 
-          <div className="mt-8 flex items-center gap-3">
+          <div className="mt-6 flex items-center gap-3">
             <span className="text-xs font-mono text-slate-400 border-b border-cyan-500/40 pb-0.5">
               LLM PROPOSES • FRIDAY INVESTIGATES • TOOLS EXECUTE • TESTS VERIFY • HUMAN APPROVES
             </span>
           </div>
 
-          <div className="mt-14 animate-bounce flex flex-col items-center gap-2 text-slate-500">
-            <span className="text-[10px] font-mono tracking-widest uppercase">Scroll to Enter World</span>
+          {/* Consolidated Primary CTA on Hero */}
+          <Link
+            href="/chat"
+            className="mt-8 px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold text-xs tracking-wider transition-all shadow-[0_0_25px_rgba(6,182,212,0.4)] hover:shadow-[0_0_35px_rgba(6,182,212,0.7)] flex items-center gap-2 pointer-events-auto group"
+          >
+            <span>ENTER FRIDAY WORKSPACE</span>
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+
+          <div className="mt-10 animate-bounce flex flex-col items-center gap-2 text-slate-500">
+            <span className="text-[10px] font-mono tracking-widest uppercase">Scroll to Explore Universe</span>
             <div className="w-5 h-8 rounded-full border border-slate-700 flex items-start justify-center p-1">
               <span className="w-1 h-2 rounded-full bg-cyan-400 animate-pulse" />
             </div>
@@ -202,16 +203,16 @@ export function SpatialHUD({ scrollProgress, hoveredNode, onJumpToScene }: Spati
 
           <div className="mt-8 grid grid-cols-3 gap-4 max-w-md w-full">
             <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-center backdrop-blur-md">
-              <p className="text-[10px] font-mono text-slate-400 uppercase">Reasoning</p>
+              <p className="text-[10px] font-mono text-slate-400 uppercase">Multi-Model AI</p>
               <p className="text-xs font-mono font-bold text-cyan-300 mt-0.5">ACTIVE</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-center backdrop-blur-md">
-              <p className="text-[10px] font-mono text-slate-400 uppercase">AST Inspector</p>
-              <p className="text-xs font-mono font-bold text-purple-300 mt-0.5">READY</p>
+              <p className="text-[10px] font-mono text-slate-400 uppercase">AST Guard</p>
+              <p className="text-xs font-mono font-bold text-purple-300 mt-0.5">VERIFIED</p>
             </div>
             <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-center backdrop-blur-md">
-              <p className="text-[10px] font-mono text-slate-400 uppercase">Self-Healing</p>
-              <p className="text-xs font-mono font-bold text-rose-300 mt-0.5">ARMED</p>
+              <p className="text-[10px] font-mono text-slate-400 uppercase">Safety Gates</p>
+              <p className="text-xs font-mono font-bold text-emerald-300 mt-0.5">ENFORCED</p>
             </div>
           </div>
         </div>
@@ -260,20 +261,20 @@ export function SpatialHUD({ scrollProgress, hoveredNode, onJumpToScene }: Spati
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 backdrop-blur-md">
-                  <p className="text-[10px] font-mono text-slate-400 uppercase">Files Indexed</p>
-                  <p className="text-base font-mono font-bold text-cyan-300 mt-0.5">124 Modules</p>
+                  <p className="text-[10px] font-mono text-slate-400 uppercase">AI Runtime</p>
+                  <p className="text-sm font-mono font-bold text-cyan-300 mt-0.5">Multi-Provider</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 backdrop-blur-md">
                   <p className="text-[10px] font-mono text-slate-400 uppercase">Verification</p>
-                  <p className="text-base font-mono font-bold text-emerald-300 mt-0.5">138/138 PASS</p>
+                  <p className="text-sm font-mono font-bold text-emerald-300 mt-0.5">138/138 PASS</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 backdrop-blur-md">
-                  <p className="text-[10px] font-mono text-slate-400 uppercase">Dependencies</p>
-                  <p className="text-base font-mono font-bold text-purple-300 mt-0.5">18 Graphs</p>
+                  <p className="text-[10px] font-mono text-slate-400 uppercase">Code Safety</p>
+                  <p className="text-sm font-mono font-bold text-purple-300 mt-0.5">AST Guarded</p>
                 </div>
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 backdrop-blur-md">
-                  <p className="text-[10px] font-mono text-slate-400 uppercase">AI Provider</p>
-                  <p className="text-base font-mono font-bold text-amber-300 mt-0.5">LLaMA 3.3</p>
+                  <p className="text-[10px] font-mono text-slate-400 uppercase">Orchestration</p>
+                  <p className="text-sm font-mono font-bold text-amber-300 mt-0.5">Phase 1–9 Engine</p>
                 </div>
               </div>
             )}
@@ -302,4 +303,5 @@ export function SpatialHUD({ scrollProgress, hoveredNode, onJumpToScene }: Spati
     </div>
   );
 }
+
 
