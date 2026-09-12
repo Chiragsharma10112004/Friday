@@ -143,3 +143,12 @@ FRIDAY is built with a reliability-first architecture, including automated testi
 
 ## Development Update
 - Improved backend error handling and module organization.
+
+### Development Log — September 12, 2026
+
+- Stabilized FRIDAY UX and voice experience.
+- Verified frontend TypeScript with 0 errors.
+- Verified frontend test suite: 3/3 passing.
+- Preserved the stable FRIDAY architecture while redesigning the future /friday experience.
+- Next focus: finalize the cinematic FRIDAY interface design before implementation.
+
